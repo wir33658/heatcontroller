@@ -68,7 +68,7 @@ type zone_state_sdp_inside_temperature struct {
 	Fahrenheit float32
 	Timestamp  string
 	Type       string
-	Precision
+	Blubber    Precision
 }
 type zone_state_sensor_data_points struct {
 }
