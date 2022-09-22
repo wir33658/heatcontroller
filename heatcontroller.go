@@ -62,14 +62,18 @@ type zone_state_overlay struct {
 }
 
 type zone_state_sdp_precision struct {
+	Celsius    float32
+	Fahrenheit float32
 }
+
 type zone_state_sdp_inside_temperature struct {
 	Celsius    float32
 	Fahrenheit float32
 	Timestamp  string
 	Type       string
-	Blubber    Precision
+	Precision  zone_state_sdp_precision
 }
+
 type zone_state_sensor_data_points struct {
 }
 
