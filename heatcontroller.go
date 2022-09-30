@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -158,6 +159,21 @@ func main() {
 	kueche_zone_state := getZoneState(client, token_obj, kueche_zone.Id, my_home.Id)
 	printZoneState(kueche_zone.Name, kueche_zone_state)
 
+	fmt.Println("-----------------------------------------------------------------------------------")
+	kueche_zone_overlay := getZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id)
+	printOverlay(kueche_zone.Name, kueche_zone_overlay)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	setting := zone_state_setting{}
+	setting.Power = "ON"
+	setting.Type = "HEATING"
+	setting.Temperature.Celsius = 18.0
+	putZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id, setting)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	kueche_zone_overlay2 := getZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id)
+	printOverlay(kueche_zone.Name, kueche_zone_overlay2)
+
 	fmt.Println("Done")
 
 }
@@ -181,6 +197,77 @@ func printMe(m me) {
 func printToken(m token) {
 	js, _ := json.MarshalIndent(m, "", "   ")
 	fmt.Println(string(js))
+}
+
+func printOverlay(name string, m zone_state_overlay) {
+	fmt.Println("\nzone-overlay '", name, "':")
+	js, _ := json.MarshalIndent(m, "", "   ")
+	fmt.Println(string(js))
+}
+
+func printSetting(m zone_state_setting) {
+	js, _ := json.MarshalIndent(m, "", "   ")
+	fmt.Println(string(js))
+}
+
+func putZoneOverlay(client http.Client, token_obj token, zone_id int, home_id int, setting zone_state_setting) {
+	zone_id_str := strconv.Itoa(zone_id)
+	home_id_str := strconv.Itoa(home_id)
+
+	url := "https://my.tado.com/api/v2/homes/" + home_id_str + "/zones/" + zone_id_str + "/overlay"
+	fmt.Println("\nURL:" + url)
+	fmt.Println("Setting:")
+	printSetting(setting)
+
+	js, _ := json.MarshalIndent(setting, "", "   ")
+	reader := bytes.NewReader(js)
+
+	req, getErr2 := http.NewRequest("PUT", url, reader)
+	if getErr2 != nil {
+		log.Fatal(getErr2)
+	}
+
+	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}}
+
+	/*
+		_, err := client.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
+}
+
+func getZoneOverlay(client http.Client, token_obj token, zone_id int, home_id int) zone_state_overlay {
+	zone_id_str := strconv.Itoa(zone_id)
+	home_id_str := strconv.Itoa(home_id)
+
+	url := "https://my.tado.com/api/v2/homes/" + home_id_str + "/zones/" + zone_id_str + "/overlay"
+	fmt.Println("\nURL:" + url)
+
+	req, getErr2 := http.NewRequest("GET", url, nil)
+	if getErr2 != nil {
+		log.Fatal(getErr2)
+	}
+
+	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		log.Fatal(readErr)
+	}
+
+	zone_state_overlay_obj := zone_state_overlay{}
+	jsonErr := json.Unmarshal(body, &zone_state_overlay_obj)
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
+
+	return zone_state_overlay_obj
 }
 
 func getZoneState(client http.Client, token_obj token, zone_id int, home_id int) zone_state {
