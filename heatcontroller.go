@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type token struct {
@@ -61,117 +62,48 @@ type zone_state_overlay struct {
 	Termination zone_state_overlay_termination
 }
 
-type zone_state_sdp_precision struct {
-}
 type zone_state_sdp_inside_temperature struct {
 	Celsius    float32
 	Fahrenheit float32
 	Timestamp  string
 	Type       string
-	// Precision
+	Precision  temperature
 }
+
+type zone_state_sdp_humidity struct {
+	Type       string
+	percentage float32
+	Timestamp  string
+}
+
 type zone_state_sensor_data_points struct {
+	InsideTemperature zone_state_sdp_inside_temperature
+	Humidity          zone_state_sdp_humidity
+}
+
+type zone_state_adp_heating_power struct {
+	Type       string
+	Percentage float32
+	Timestamp  string
+}
+
+type zone_state_activity_data_points struct {
+	HeatingPower zone_state_adp_heating_power
+}
+
+type zone_state_next_schedule_change struct {
+	Start   string
+	Setting zone_state_setting
 }
 
 type zone_state struct {
-	Setting     zone_state_setting
-	OverlayType string
-	Overlay     zone_state_overlay
+	Setting            zone_state_setting
+	OverlayType        string
+	Overlay            zone_state_overlay
+	SensorDataPoints   zone_state_sensor_data_points
+	ActivityDataPoints zone_state_activity_data_points
+	NextScheduleChange zone_state_next_schedule_change
 }
-
-/*
-
-    "sensorDataPoints": {
-        "insideTemperature": {
-            "celsius": 18.28,
-            "fahrenheit": 64.90,
-            "timestamp": "2022-09-21T04:48:07.906Z",
-            "type": "TEMPERATURE",
-            "precision": {
-                "celsius": 0.1,
-                "fahrenheit": 0.1
-            }
-        },
-        "humidity": {
-            "type": "PERCENTAGE",
-            "percentage": 69.60,
-            "timestamp": "2022-09-21T04:48:07.906Z"
-        }
-    }
-{
-    "tadoMode": "HOME",
-    "geolocationOverride": false,
-    "geolocationOverrideDisableTime": null,
-    "preparation": null,
-    "setting": {
-        "type": "HEATING",
-        "power": "ON",
-        "temperature": {
-            "celsius": 20.00,
-            "fahrenheit": 68.00
-        }
-    },
-    "overlayType": "MANUAL",
-    "overlay": {
-        "type": "MANUAL",
-        "setting": {
-            "type": "HEATING",
-            "power": "ON",
-            "temperature": {
-                "celsius": 20.00,
-                "fahrenheit": 68.00
-            }
-        },
-        "termination": {
-            "type": "MANUAL",
-            "typeSkillBasedApp": "MANUAL",
-            "projectedExpiry": null
-        }
-    },
-    "openWindow": null,
-    "nextScheduleChange": {
-        "start": "2022-09-21T06:30:00Z",
-        "setting": {
-            "type": "HEATING",
-            "power": "ON",
-            "temperature": {
-                "celsius": 18.00,
-                "fahrenheit": 64.40
-            }
-        }
-    },
-    "nextTimeBlock": {
-        "start": "2022-09-21T06:30:00.000Z"
-    },
-    "link": {
-        "state": "ONLINE"
-    },
-    "activityDataPoints": {
-        "heatingPower": {
-            "type": "PERCENTAGE",
-            "percentage": 100.00,
-            "timestamp": "2022-09-21T04:47:40.386Z"
-        }
-    },
-    "sensorDataPoints": {
-        "insideTemperature": {
-            "celsius": 18.28,
-            "fahrenheit": 64.90,
-            "timestamp": "2022-09-21T04:48:07.906Z",
-            "type": "TEMPERATURE",
-            "precision": {
-                "celsius": 0.1,
-                "fahrenheit": 0.1
-            }
-        },
-        "humidity": {
-            "type": "PERCENTAGE",
-            "percentage": 69.60,
-            "timestamp": "2022-09-21T04:48:07.906Z"
-        }
-    }
-}
-*/
 
 // Main function
 func main() {
@@ -180,33 +112,129 @@ func main() {
 
 	client := http.Client{}
 
+	fmt.Println("-----------------------------------------------------------------------------------")
 	token_obj := getToken(client)
-	fmt.Println("\n\nAccessToken:", token_obj.AccessToken)
-	fmt.Println("\n\nRefreshToken:", token_obj.RefreshToken)
-	fmt.Println("\n\nTokenType:", token_obj.TokenType)
-	fmt.Println("\n\nExpiresIn:", token_obj.ExpiresIn)
-	fmt.Println("\n\nScope:", token_obj.Scope)
-	fmt.Println("\n\nJTI:", token_obj.JTI)
+	printToken(token_obj)
+	/*
+		fmt.Println("\n\nAccessToken:", token_obj.AccessToken)
+		fmt.Println("\n\nRefreshToken:", token_obj.RefreshToken)
+		fmt.Println("\n\nTokenType:", token_obj.TokenType)
+		fmt.Println("\n\nExpiresIn:", token_obj.ExpiresIn)
+		fmt.Println("\n\nScope:", token_obj.Scope)
+		fmt.Println("\n\nJTI:", token_obj.JTI)
+	*/
 
+	fmt.Println("-----------------------------------------------------------------------------------")
 	me_obj := getMe(client, token_obj)
-	fmt.Println("\n\nName:", me_obj.Name)
-	fmt.Println("\n\nUserName:", me_obj.UserName)
-	fmt.Println("\n\nId:", me_obj.Id)
-	fmt.Println("\n\nEMail:", me_obj.EMail)
-	fmt.Println("\n\nHomes:", me_obj.Homes)
-	fmt.Println("\n\nHomes[0].Name:", me_obj.Homes[0].Name)
-	fmt.Println("\n\nHomes[0].Id:", me_obj.Homes[0].Id)
+	printMe(me_obj)
+	/*
+		fmt.Println("\n\nName:", me_obj.Name)
+		fmt.Println("\n\nUserName:", me_obj.UserName)
+		fmt.Println("\n\nId:", me_obj.Id)
+		fmt.Println("\n\nEMail:", me_obj.EMail)
+		fmt.Println("\n\nHomes:", me_obj.Homes)
+		fmt.Println("\n\nHomes[0].Name:", me_obj.Homes[0].Name)
+		fmt.Println("\n\nHomes[0].Id:", me_obj.Homes[0].Id)
+	*/
 
-	zones_obj := getZones(client, token_obj, me_obj.Homes[0].Id)
-	fmt.Println("\n\nZones:", zones_obj)
+	my_home := me_obj.Homes[0]
+
+	zones_obj := getZones(client, token_obj, my_home.Id)
+	// fmt.Println("\n\nZones:", zones_obj)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	wohnzimmer_zone := getZone("Wohnzimmer", zones_obj)
+	printZone(wohnzimmer_zone)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	wohnzimmer_zone_state := getZoneState(client, token_obj, wohnzimmer_zone.Id, my_home.Id)
+	printZoneState(wohnzimmer_zone.Name, wohnzimmer_zone_state)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	kueche_zone := getZone("Küche", zones_obj)
+	printZone(kueche_zone)
+
+	fmt.Println("-----------------------------------------------------------------------------------")
+	kueche_zone_state := getZoneState(client, token_obj, kueche_zone.Id, my_home.Id)
+	printZoneState(kueche_zone.Name, kueche_zone_state)
 
 	fmt.Println("Done")
 
 }
 
+func printZone(zs *zone) {
+	js, _ := json.MarshalIndent(zs, "", "   ")
+	fmt.Println(string(js))
+}
+
+func printZoneState(name string, zs zone_state) {
+	fmt.Println("\nzone-state '", name, "':")
+	js, _ := json.MarshalIndent(zs, "", "   ")
+	fmt.Println(string(js))
+}
+
+func printMe(m me) {
+	js, _ := json.MarshalIndent(m, "", "   ")
+	fmt.Println(string(js))
+}
+
+func printToken(m token) {
+	js, _ := json.MarshalIndent(m, "", "   ")
+	fmt.Println(string(js))
+}
+
+func getZoneState(client http.Client, token_obj token, zone_id int, home_id int) zone_state {
+	zone_id_str := strconv.Itoa(zone_id)
+	// fmt.Println("\nzone_id:", zone_id_str)
+
+	home_id_str := strconv.Itoa(home_id)
+	// fmt.Println("\nhome_id:", home_id_str)
+
+	url := "https://my.tado.com/api/v2/homes/" + home_id_str + "/zones/" + zone_id_str + "/state"
+	fmt.Println("\nURL:" + url)
+
+	req, getErr2 := http.NewRequest("GET", url, nil)
+	if getErr2 != nil {
+		log.Fatal(getErr2)
+	}
+
+	req.Header = http.Header{
+		"Authorization": {"Bearer " + token_obj.AccessToken},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		log.Fatal(readErr)
+	}
+	// bodyStr := string(body)
+	// fmt.Println(bodyStr)
+
+	zone_state_obj := zone_state{}
+	jsonErr := json.Unmarshal(body, &zone_state_obj)
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
+
+	return zone_state_obj
+}
+
+func getZone(name string, zones []zone) *zone {
+	for i, e := range zones {
+		if strings.ToLower(e.Name) == strings.ToLower(name) {
+			return &zones[i]
+		}
+	}
+	return nil
+}
+
 func getZones(client http.Client, token_obj token, home_id int) []zone {
 	home_id_str := strconv.Itoa(home_id)
-	fmt.Println("\nhome_id:", home_id_str)
+	// fmt.Println("\nhome_id:", home_id_str)
 
 	url := "https://my.tado.com/api/v2/homes/" + home_id_str + "/zones"
 	fmt.Println("\nURL:" + url)
@@ -229,8 +257,8 @@ func getZones(client http.Client, token_obj token, home_id int) []zone {
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
-	bodyStr := string(body)
-	fmt.Println(bodyStr)
+	// bodyStr := string(body)
+	// fmt.Println(bodyStr)
 
 	zone_objs := []zone{}
 	jsonErr := json.Unmarshal(body, &zone_objs)
@@ -257,14 +285,14 @@ func getMe(client http.Client, token_obj token) me {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(resp.Body)
+	// fmt.Println(resp.Body)
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
-	bodyStr := string(body)
-	fmt.Println(bodyStr)
+	// bodyStr := string(body)
+	// fmt.Println(bodyStr)
 
 	me_obj := me{}
 	jsonErr := json.Unmarshal(body, &me_obj)
@@ -286,13 +314,13 @@ func getToken(client http.Client) token {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(resp.Body)
+	// fmt.Println(resp.Body)
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
-	fmt.Println(string(body))
+	// fmt.Println(string(body))
 
 	token_obj := token{}
 	jsonErr := json.Unmarshal(body, &token_obj)
