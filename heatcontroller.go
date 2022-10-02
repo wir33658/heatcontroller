@@ -35,75 +35,79 @@ type me struct { // Only a part, check Postman for the complete returned data ob
 }
 
 type zone struct { // Only a part, check Postman for the complete returned data object.
-	Id   int // no explicit json description needed as long as the name is the same (doesn't matter lower/upper case)
-	Name string
-	Type string
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 type temperature struct {
-	Celsius    float32
-	Fahrenheit float32
+	Celsius    float32 `json:"celsius"`
+	Fahrenheit float32 `json:"fahrenheit"`
 }
 
 type zone_state_setting struct {
-	Type        string
-	Power       string
-	Temperature temperature
+	Type        string      `json:"type"`
+	Power       string      `json:"power"`
+	Temperature temperature `json:"temperature"`
+}
+
+type zone_state_setting_wrapper struct {
+	Setting zone_state_setting `json:"setting"`
 }
 
 type zone_state_overlay_termination struct {
-	Type              string
-	TypeSkellBasedApp string
-	ProjectedExpiry   string
+	Type              string `json:"type"`
+	TypeSkellBasedApp string `json:"typeSkellBasedApp"`
+	ProjectedExpiry   string `json:"projectedExpiry"`
 }
 
 type zone_state_overlay struct {
-	Type        string
-	Setting     zone_state_setting
-	Termination zone_state_overlay_termination
+	Type        string                         `json:"type"`
+	Setting     zone_state_setting             `json:"setting"`
+	Termination zone_state_overlay_termination `json:"termination"`
 }
 
 type zone_state_sdp_inside_temperature struct {
-	Celsius    float32
-	Fahrenheit float32
-	Timestamp  string
-	Type       string
-	Precision  temperature
+	Celsius    float32     `json:"celsius"`
+	Fahrenheit float32     `json:"fahrenheit"`
+	Timestamp  string      `json:"timestamp"`
+	Type       string      `json:"type"`
+	Precision  temperature `json:"precision"`
 }
 
 type zone_state_sdp_humidity struct {
-	Type       string
-	percentage float32
-	Timestamp  string
+	Type       string  `json:"type"`
+	Percentage float32 `json:"percentage"`
+	Timestamp  string  `json:"timestamp"`
 }
 
 type zone_state_sensor_data_points struct {
-	InsideTemperature zone_state_sdp_inside_temperature
-	Humidity          zone_state_sdp_humidity
+	InsideTemperature zone_state_sdp_inside_temperature `json:"insideTemperature"`
+	Humidity          zone_state_sdp_humidity           `json:"humidity"`
 }
 
 type zone_state_adp_heating_power struct {
-	Type       string
-	Percentage float32
-	Timestamp  string
+	Type       string  `json:"type"`
+	Percentage float32 `json:"percentage"`
+	Timestamp  string  `json:"timestamp"`
 }
 
 type zone_state_activity_data_points struct {
-	HeatingPower zone_state_adp_heating_power
+	HeatingPower zone_state_adp_heating_power `json:"heatingPower"`
 }
 
 type zone_state_next_schedule_change struct {
-	Start   string
-	Setting zone_state_setting
+	Start   string             `json:"start"`
+	Setting zone_state_setting `json:"setting"`
 }
 
 type zone_state struct {
-	Setting            zone_state_setting
-	OverlayType        string
-	Overlay            zone_state_overlay
-	SensorDataPoints   zone_state_sensor_data_points
-	ActivityDataPoints zone_state_activity_data_points
-	NextScheduleChange zone_state_next_schedule_change
+	Setting            zone_state_setting              `json:"setting"`
+	OverlayType        string                          `json:"overlayType"`
+	Overlay            zone_state_overlay              `json:"overlay"`
+	SensorDataPoints   zone_state_sensor_data_points   `json:"sensorDataPoints"`
+	ActivityDataPoints zone_state_activity_data_points `json:"activityDataPoints"`
+	NextScheduleChange zone_state_next_schedule_change `json:"nextScheduleChange"`
 }
 
 // Main function
@@ -167,7 +171,7 @@ func main() {
 	setting := zone_state_setting{}
 	setting.Power = "ON"
 	setting.Type = "HEATING"
-	setting.Temperature.Celsius = 18.0
+	setting.Temperature.Celsius = 19.0
 	putZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id, setting)
 
 	fmt.Println("-----------------------------------------------------------------------------------")
@@ -205,6 +209,11 @@ func printOverlay(name string, m zone_state_overlay) {
 	fmt.Println(string(js))
 }
 
+func printSettingWrapper(m zone_state_setting_wrapper) {
+	js, _ := json.MarshalIndent(m, "", "   ")
+	fmt.Println(string(js))
+}
+
 func printSetting(m zone_state_setting) {
 	js, _ := json.MarshalIndent(m, "", "   ")
 	fmt.Println(string(js))
@@ -215,11 +224,26 @@ func putZoneOverlay(client http.Client, token_obj token, zone_id int, home_id in
 	home_id_str := strconv.Itoa(home_id)
 
 	url := "https://my.tado.com/api/v2/homes/" + home_id_str + "/zones/" + zone_id_str + "/overlay"
-	fmt.Println("\nURL:" + url)
+	fmt.Println("\nURL(PUT):" + url)
 	fmt.Println("Setting:")
-	printSetting(setting)
+	//	printSetting(setting)
 
-	js, _ := json.MarshalIndent(setting, "", "   ")
+	wrapper := zone_state_setting_wrapper{}
+	wrapper.Setting = setting
+	printSettingWrapper(wrapper)
+
+	//str := "{\"setting\": {	\"type\": \"HEATING\",\"power\": \"ON\",\"temperature\": {\"celsius\": 20,\"fahrenheit\": 0}}}"
+	//reader := strings.NewReader(str)
+
+	/*
+		buf := new(strings.Builder)
+		_, err := io.Copy(buf, reader)
+		// check errors
+		fmt.Println(buf.String())
+	*/
+
+	js, _ := json.Marshal(wrapper)
+	//fmt.Println("js:\n", js)
 	reader := bytes.NewReader(js)
 
 	req, getErr2 := http.NewRequest("PUT", url, reader)
@@ -227,14 +251,14 @@ func putZoneOverlay(client http.Client, token_obj token, zone_id int, home_id in
 		log.Fatal(getErr2)
 	}
 
-	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}}
-
-	/*
-		_, err := client.Do(req)
-		if err != nil {
-			log.Fatal(err)
-		}
-	*/
+	req.Header.Set("Authorization", "Bearer "+token_obj.AccessToken)
+	req.Header.Set("Content-Type", "application/json")
+	//	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}, "Content-Type": {"application/json"}}
+	_, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//fmt.Println("PUT resp:\n", resp)
 }
 
 func getZoneOverlay(client http.Client, token_obj token, zone_id int, home_id int) zone_state_overlay {
