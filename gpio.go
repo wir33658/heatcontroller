@@ -6,7 +6,7 @@ import (
 	"github.com/stianeikeland/go-rpio/v4"
 )
 
-func main() {
+func main3() {
 
 	fmt.Println("!... Hello GPIO ...!")
 

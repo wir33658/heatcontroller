@@ -1,3 +1,5 @@
 {
-    "go.useLanguageServer": false
+    "go.useLanguageServer": false,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 10000
 }
