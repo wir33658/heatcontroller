@@ -111,9 +111,9 @@ type zone_state struct {
 }
 
 // Main function
-func main() {
+func main2() {
 
-	fmt.Println("!... Hello World ...!")
+	fmt.Println("!... Hello Heatcontroller ...!")
 
 	client := http.Client{}
 
