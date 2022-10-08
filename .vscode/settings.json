@@ -1,9 +1,13 @@
 {
+<<<<<<< HEAD
     "[go]": {
         "editor.defaultFormatter": "golang.go",
         "editor.formatOnSave": false
     },
     "editor.formatOnSave": false,
+=======
+    "go.useLanguageServer": false,
+>>>>>>> e92e085b016cf3ef44b13881d1fcee00bb9a6cb0
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 10000
 }
