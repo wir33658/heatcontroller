@@ -1,0 +1,9 @@
+{
+    "[go]": {
+        "editor.defaultFormatter": "golang.go",
+        "editor.formatOnSave": false
+    },
+    "editor.formatOnSave": false,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 10000
+}
