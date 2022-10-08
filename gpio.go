@@ -46,46 +46,94 @@ Example (LED blink on Pin 18):
 
 import (
 	"fmt"
-//	"time"
+	"time"
 
-//	"github.com/stianeikeland/go-rpio/v4"
+	"github.com/stianeikeland/go-rpio/v4"
 )
 
-type GPIO interface {
-	open() string
-	close()
-	//pin(nr int) 
+type Irpio interface {
+	Open() (err error)
+	Close()
+	Output(p rpio.Pin)
+	Input(p rpio.Pin)
+	Toggle(p rpio.Pin)
 }
 
-func open() string {
-	return "open"
+type RealRPIO struct {}
+
+func (RealRPIO) Open() (err error) {
+	fmt.Println("Open")
+	return rpio.Open()
 }
+func (RealRPIO) Close() {
+	fmt.Println("Close")
+	rpio.Close()
+}
+func (RealRPIO) Output(p rpio.Pin) {
+	fmt.Println("Output" + string(p))
+	p.Output()
+}
+func (RealRPIO) Input(p rpio.Pin) {
+	fmt.Println("Input" + string(p))
+	p.Input()
+}
+func (RealRPIO) Toggle(p rpio.Pin) {
+	fmt.Println("Toggle" + string(p))
+	p.Toggle()
+}
+
+type MockRPIO struct {
+	State bool `default:false`
+	
+}
+
+func (m MockRPIO) Open() (err error) {
+	fmt.Println("Open")
+	
+	return nil
+}
+func (MockRPIO) Close() {
+	fmt.Println("Close")
+}
+func (MockRPIO) Output(p rpio.Pin) {
+	fmt.Println("Output" + string(p))
+}
+func (MockRPIO) Input(p rpio.Pin) {
+	fmt.Println("Input" + string(p))
+}
+func (MockRPIO) Toggle(p rpio.Pin) {
+	fmt.Println("Toggle" + string(p))
+}
+
+var sim = true
 
 func main() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
-	/*
-	err := rpio.Open()
+	var r Irpio
+	if(sim){
+		r2 := &MockRPIO{}
+		Set(r2, "default")
+		r = r2
+	} else {
+		r = &RealRPIO{}
+	}
+	
+	err := r.Open()
 	if err != nil {
 		panic(fmt.Sprint("unable to open gpio", err.Error()))
 	}
 
-	defer rpio.Close()
-
-	pin := rpio.Pin(18)
-	pin.Output()
+	defer r.Close()
+	
+	pin18 := rpio.Pin(18)
+	r.Output(pin18)
 
 	for x := 0; x < 20; x++ {
-		pin.Toggle()
+		r.Toggle(pin18)
 		time.Sleep(time.Second / 5)
 	}
-
-	gpio := GPIO
-
-	rv := gpio.open()
-	fmt.Println(rv)
-	*/
 }
 
 
