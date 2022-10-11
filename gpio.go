@@ -47,9 +47,14 @@ Example (LED blink on Pin 18):
 import (
 	"fmt"
 	"time"
+	"strconv"
 
+	"github.com/creasty/defaults"
 	"github.com/stianeikeland/go-rpio/v4"
 )
+
+// check out : https://github.com/creasty/defaults
+
 
 type Irpio interface {
 	Open() (err error)
@@ -59,50 +64,80 @@ type Irpio interface {
 	Toggle(p rpio.Pin)
 }
 
-type RealRPIO struct {}
+type RpioStates struct {
+	isOpen bool 		`default:"false"`
+	pinStates [32]bool 	`default:"[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]"`
+}
 
-func (RealRPIO) Open() (err error) {
+
+
+type RealRPIO struct {
+	States RpioStates
+}
+
+func (r RealRPIO) Open() (err error) {
 	fmt.Println("Open")
+	r.States.isOpen = true
 	return rpio.Open()
 }
-func (RealRPIO) Close() {
+func (r RealRPIO) Close() {
 	fmt.Println("Close")
+	r.States.isOpen = false
 	rpio.Close()
 }
-func (RealRPIO) Output(p rpio.Pin) {
+func (r RealRPIO) Output(p rpio.Pin) {
 	fmt.Println("Output" + string(p))
+	r.States.pinStates[p] = true
 	p.Output()
 }
-func (RealRPIO) Input(p rpio.Pin) {
+func (r RealRPIO) Input(p rpio.Pin) {
 	fmt.Println("Input" + string(p))
+	r.States.pinStates[p] = false
 	p.Input()
 }
-func (RealRPIO) Toggle(p rpio.Pin) {
+func (r RealRPIO) Toggle(p rpio.Pin) {
 	fmt.Println("Toggle" + string(p))
+	r.States.pinStates[p] = !r.States.pinStates[p]
 	p.Toggle()
 }
 
+type Fuck uint8
+
 type MockRPIO struct {
-	State bool `default:false`
-	
+	States RpioStates	
 }
 
 func (m MockRPIO) Open() (err error) {
 	fmt.Println("Open")
-	
+	m.States.isOpen = true
+	m.States.pinStates = [32]bool{false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false}
 	return nil
 }
-func (MockRPIO) Close() {
+func (m MockRPIO) Close() {
+	m.States.isOpen = false
 	fmt.Println("Close")
 }
-func (MockRPIO) Output(p rpio.Pin) {
+func (m MockRPIO) Output(p rpio.Pin) {
+	m.States.pinStates[p] = true
 	fmt.Println("Output" + string(p))
 }
-func (MockRPIO) Input(p rpio.Pin) {
+func (m MockRPIO) Input(p rpio.Pin) {
+	m.States.pinStates[p] = false
 	fmt.Println("Input" + string(p))
 }
-func (MockRPIO) Toggle(p rpio.Pin) {
-	fmt.Println("Toggle" + string(p))
+func (m MockRPIO) Toggle(p rpio.Pin) {
+	pos := uint64(p)
+	var state bool 
+	var statenow = m.States.pinStates[pos]
+	fmt.Println("Fuck:" + strconv.FormatBool(statenow))
+	if(statenow == true){
+		state = false 
+	} else {
+		state = true
+	}
+	fmt.Println("Fuck2:" + strconv.FormatBool(state))
+	*(&m.States.pinStates[pos]) = state
+	fmt.Println("Toggle(" + strconv.FormatUint(pos, 10) + "):" + strconv.FormatBool(m.States.pinStates[pos]))
 }
 
 var sim = true
@@ -114,7 +149,9 @@ func main() {
 	var r Irpio
 	if(sim){
 		r2 := &MockRPIO{}
-		Set(r2, "default")
+		if err := defaults.Set(r2); err != nil {
+			panic(err)
+		}
 		r = r2
 	} else {
 		r = &RealRPIO{}
