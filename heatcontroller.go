@@ -111,14 +111,14 @@ type zone_state struct {
 }
 
 // Main function
-func main2() {
+func Amain2() {
 
 	fmt.Println("!... Hello Heatcontroller ...!")
 
 	client := http.Client{}
 
 	fmt.Println("-----------------------------------------------------------------------------------")
-	token_obj := getToken(client)
+	token_obj := GetToken(client)
 	printToken(token_obj)
 	/*
 		fmt.Println("\n\nAccessToken:", token_obj.AccessToken)
@@ -429,7 +429,7 @@ func readCredentials() Credentials {
 	return cred
 }
 
-func getToken(client http.Client) token {
+func GetToken(client http.Client) token {
 
 	//var js = []byte("{\"Name\":\"Dinesh Krishnan\",\"PW\":\"apassword\"}")
 	var cred Credentials = readCredentials()

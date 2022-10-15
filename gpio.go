@@ -324,10 +324,12 @@ func main() {
 
 	var done = false
 	for !done {
-		token_obj := getToken(client)
-		fmt.Println("Token :", token_obj)
+		token_obj := GetToken(client)
+//		fmt.Println("Token :", token_obj)
+		me_obj := getMe(client, token_obj)
+		printMe(me_obj)
 
-		Wait(time.Second * 5)
+		Wait(time.Second * 10)
 	}
 
 
