@@ -48,6 +48,7 @@ import (
 	"fmt"
 	"time"
 	"strconv"
+//	"math"
 
 //	"github.com/creasty/defaults"
 	"github.com/stianeikeland/go-rpio/v4"
@@ -62,80 +63,209 @@ type Irpio interface {
 	Output(p rpio.Pin)
 	Input(p rpio.Pin)
 	Toggle(p rpio.Pin)
+	Low(p rpio.Pin)
+	High(p rpio.Pin)
+
+	GpioSetup(s7 bool, s0 bool, s2 bool, s3 bool)
 }
 
-type RpioStates struct {
-	IsOpen bool 		// `default:"false"`
-	PinStates []bool 	// `default:"[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]"`
+type RpioStatus struct {
+	IsOpen bool 		
+	PinStates []rpio.State 	
+	PinModes []rpio.Mode 	
 }
 
-
+type HomeStatus struct {
+	TRIGGER_STEP float64
+	HALF_DEGREE_STEP float64
+	MIN_TEMP float64
+	MAX_TEMP float64
+	RECENT_TEMP float64
+	LAST_CMD string
+}
 
 type RealRPIO struct {
-	States RpioStates
+	Sim bool
+	Status RpioStatus
+	Home HomeStatus
 }
 
 func (r RealRPIO) Open() (err error) {
 	fmt.Println("Open")
-	r.States.IsOpen = true
-	return rpio.Open()
+	if(!r.Sim){
+		err = rpio.Open()
+	}
+	if err == nil {
+		r.Status.IsOpen = true
+	}
+	return err
 }
+
 func (r RealRPIO) Close() {
 	fmt.Println("Close")
-	r.States.IsOpen = false
-	rpio.Close()
+	if(!r.Sim){rpio.Close()}
+	r.Status.IsOpen = false
 }
-func (r RealRPIO) Output(p rpio.Pin) {
-	fmt.Println("Output" + string(p))
-	r.States.PinStates[p] = true
-	p.Output()
+
+func (r RealRPIO) Input(p rpio.Pin) { // Input Mode : into the raspi
+	if(!r.Sim){p.Input()} else {r.Status.PinModes[p] = rpio.Input}
+	r.printPin("Input", p)
 }
-func (r RealRPIO) Input(p rpio.Pin) {
-	fmt.Println("Input" + string(p))
-	r.States.PinStates[p] = false
-	p.Input()
+func (r RealRPIO) Output(p rpio.Pin) { // Output Mode : out from the raspi
+	if(!r.Sim){p.Output()} else {r.Status.PinModes[p] = rpio.Output}
+	r.printPin("Output", p)
 }
+
 func (r RealRPIO) Toggle(p rpio.Pin) {
-	fmt.Println("Toggle" + string(p))
-	r.States.PinStates[p] = !r.States.PinStates[p]
-	p.Toggle()
+	if(!r.Sim){p.Toggle()} else {
+		if(r.Status.PinStates[p] == rpio.High){r.Status.PinStates[p] = rpio.Low} else {r.Status.PinStates[p] = rpio.High}
+	}
+	r.printPin("Toggle", p)
 }
 
-type Fuck uint8
-
-type MockRPIO struct {
-	States RpioStates	
+func (r RealRPIO) High(p rpio.Pin) {
+	if(!r.Sim){p.High()} else {r.Status.PinStates[p] = rpio.High}
+	r.printPin("High", p)
 }
 
-func (m MockRPIO) Open() (err error) {
-	fmt.Println("Open")
-	m.States.IsOpen = true
-	return nil
-}
-func (m MockRPIO) Close() {
-	m.States.IsOpen = false
-	fmt.Println("Close")
-}
-func (m MockRPIO) Output(p rpio.Pin) {
-	m.States.PinStates[p] = true
-	printPin("Output", p, m.States.PinStates[p])
-}
-func (m MockRPIO) Input(p rpio.Pin) {
-	m.States.PinStates[p] = false
-	printPin("Input", p, m.States.PinStates[p])
-}
-func (m MockRPIO) Toggle(p rpio.Pin) {
-	var pin = &(m.States.PinStates[p])
-	if(*pin == true){*pin = false } else { *pin = true }
-	printPin("Toggle", p, *pin)
+func (r RealRPIO) Low(p rpio.Pin) {
+	if(!r.Sim){p.Low()} else {r.Status.PinStates[p] = rpio.Low}
+	r.printPin("Low", p)
 }
 
-func printPin(action string, p rpio.Pin, state bool) {
+
+func (r RealRPIO) printPin(action string, p rpio.Pin) {
+	var pinState rpio.State
+	if(!r.Sim){
+		pinState = p.Read()		
+	} else {
+		pinState = r.Status.PinStates[p]
+	}
+	r.Status.PinStates[p] = pinState 
+	pinMode := r.Status.PinModes[p]
+
 	fmt.Print(action + " : ")
 	fmt.Print("Pin:" + strconv.FormatUint(uint64(p), 10))
-	fmt.Println("  " + strconv.FormatBool(state))
+	fmt.Print("  State=" + strconv.FormatUint(uint64(pinState), 10))
+	fmt.Println("  Mode=" + strconv.FormatUint(uint64(pinMode), 10))
 }
 
+var FULL_CIRCLE float64 = 510.0
+
+func toDegree(deg float64) float64 {
+	return FULL_CIRCLE / 360 * deg
+}
+
+func (r RealRPIO) GpioSetup(s7 bool, s0 bool, s2 bool, s3 bool){
+	pin0 := rpio.Pin(0)
+	pin2 := rpio.Pin(2)
+	pin3 := rpio.Pin(3)
+	pin7 := rpio.Pin(7)
+
+	if(s0){r.High(pin0)} else {r.Low(pin0)}
+	if(s2){r.High(pin2)} else {r.Low(pin2)}
+	if(s3){r.High(pin3)} else {r.Low(pin3)}
+	if(s7){r.High(pin7)} else {r.Low(pin7)}
+
+	fmt.Println("-----------------------------")
+}
+
+func (r RealRPIO) RightTurn(deg float64){
+	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
+	var degree = toDegree(deg)
+	r.GpioSetup(false, false, false, false)
+
+	for (degree > 0.0) {
+		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+		r.GpioSetup(true, false, false, false)
+		r.GpioSetup(true, true, false, false)
+		r.GpioSetup(false, true, false, false)
+		r.GpioSetup(false, true, true, false)
+		r.GpioSetup(false, false, true, false)
+		r.GpioSetup(false, false, true, true)
+		r.GpioSetup(false, false, false, true)
+		r.GpioSetup(true, false, false, true)
+		degree -= 1
+	}
+}
+
+func (r RealRPIO) LeftTurn(deg float64){
+	fmt.Println("Left-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
+	var degree = toDegree(deg)
+	r.GpioSetup(false, false, false, false)
+
+	for (degree > 0.0) {
+		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+		r.GpioSetup(true, false, false, true)
+		r.GpioSetup(false, false, false, true)
+		r.GpioSetup(false, false, true, true)
+		r.GpioSetup(false, false, true, false)
+		r.GpioSetup(false, true, true, false)
+		r.GpioSetup(false, true, false, false)
+		r.GpioSetup(true, true, false, false)
+		r.GpioSetup(true, false, false, false)
+		degree -= 1
+	}
+}
+
+func (r RealRPIO) Calibrate() {
+	fmt.Println("Calibration started ...")
+	r.LeftTurn(r.Home.TRIGGER_STEP)
+	time.Sleep(time.Second * 2)
+	r.LeftTurn(40.0 * r.Home.HALF_DEGREE_STEP) // should be max(= 30) now
+	time.Sleep(time.Second * 10) // Back to 20 degrees
+	r.RightTurn(r.Home.TRIGGER_STEP)
+	time.Sleep(time.Second * 2)
+	r.RightTurn(20 * r.Home.HALF_DEGREE_STEP) // should be 20 now
+	r.GpioSetup(false, false, false, false)
+	r.Home.RECENT_TEMP = 20
+	time.Sleep(time.Second * 2)
+	fmt.Println("Calibration done.")
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
+	r.Home.LAST_CMD = "Calibrate"
+	}
+
+	func (r RealRPIO) TempDiff(tempdiff float64) {
+	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'e', 3, 64))
+	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
+
+	var goal = r.Home.RECENT_TEMP + tempdiff
+	fmt.Println("goal : " + strconv.FormatFloat(goal, 'e', 3, 64))
+	if(goal < r.Home.MIN_TEMP){
+		goal = r.Home.MIN_TEMP
+	} else {
+		if(goal > r.Home.MAX_TEMP){
+			goal = r.Home.MAX_TEMP
+		} else {
+			fmt.Println("goal : " + strconv.FormatFloat(goal, 'e', 3, 64))
+		}
+	}
+
+	var finaltempdiff = goal - r.Home.RECENT_TEMP
+	var finaltempdiffabs = finaltempdiff
+	if(finaltempdiff < 0){finaltempdiffabs = finaltempdiff * -1}
+	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'e', 3, 64))
+	fmt.Println("abs : "   + strconv.FormatFloat(finaltempdiffabs, 'e', 3, 64))
+
+	if(finaltempdiff < 0) {
+		r.RightTurn(r.Home.TRIGGER_STEP)
+		time.Sleep(time.Second * 2)
+		r.RightTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
+		time.Sleep(time.Second * 2)
+		r.Home.RECENT_TEMP = goal
+	} else if(finaltempdiff > 0) {
+		r.LeftTurn(r.Home.TRIGGER_STEP)
+		time.Sleep(time.Second * 2)
+		r.LeftTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
+		time.Sleep(time.Second * 2)
+		r.Home.RECENT_TEMP = goal
+	}
+	r.GpioSetup(false, false, false, false)
+
+	fmt.Println("Adjusted")
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
+	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'e', 3, 64)
+}
 
 var sim = true
 
@@ -143,16 +273,22 @@ func main() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
-	var r Irpio
-	if(sim){
-		r = MockRPIO{
-			States : RpioStates {
-				IsOpen : false,
-				PinStates: []bool{false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false},
-			},
-		}
-	} else {
-		r = RealRPIO{}
+	var L = rpio.Low
+	var I = rpio.Input
+	var r Irpio = RealRPIO{
+		Sim : sim,
+		Status : RpioStatus {
+			IsOpen : false,
+			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
+			PinModes: []rpio.Mode{I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I},
+		},
+		Home : HomeStatus {
+			TRIGGER_STEP : 100.0,
+			HALF_DEGREE_STEP : 44.0,
+			MIN_TEMP : 18.0,
+			MAX_TEMP : 23.0,
+			RECENT_TEMP : 20.0,
+		},
 	}
 	
 	err := r.Open()
@@ -162,13 +298,28 @@ func main() {
 
 	defer r.Close()
 	
-	pin18 := rpio.Pin(18)
-	r.Output(pin18)
+	pin0 := rpio.Pin(0)
+	pin2 := rpio.Pin(2)
+	pin3 := rpio.Pin(3)
+	pin7 := rpio.Pin(7)
 
+	r.Output(pin0)
+	r.Output(pin2)
+	r.Output(pin3)
+	r.Output(pin7)
+
+	r.GpioSetup(false, false, false, false)
+
+
+
+
+
+	/*
 	for x := 0; x < 4; x++ {
 		r.Toggle(pin18)
 		time.Sleep(time.Second / 5)
 	}
+	*/
 
 
 
@@ -197,6 +348,36 @@ func main() {
 
 	*/
 }
+
+
+/*
+type MockRPIO struct {
+	Status RpioStatus	
+}
+
+func (m MockRPIO) Open() (err error) {
+	fmt.Println("Open")
+	m.Status.IsOpen = true
+	return nil
+}
+func (m MockRPIO) Close() {
+	m.Status.IsOpen = false
+	fmt.Println("Close")
+}
+func (m MockRPIO) Output(p rpio.Pin) {
+	m.Status.PinStates[p] = true
+	printPin("Output", p, m.Status.PinStates[p])
+}
+func (m MockRPIO) Input(p rpio.Pin) {
+	m.Status.PinStates[p] = false
+	printPin("Input", p, m.Status.PinStates[p])
+}
+func (m MockRPIO) Toggle(p rpio.Pin) {
+	var pin = &(m.Status.PinStates[p])
+	if(*pin == true){*pin = false } else { *pin = true }
+	printPin("Toggle", p, *pin)
+}
+*/
 
 
 type ai interface {

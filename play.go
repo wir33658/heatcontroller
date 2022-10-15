@@ -35,7 +35,7 @@ func (OneMock) GetB(v int) string {
 	return "GetBMock-v-ignored"
 }
 
-func main() {
+func main4() {
 	fmt.Println("Test")
 	v := sub.GetA(4)
 	fmt.Println(v)
