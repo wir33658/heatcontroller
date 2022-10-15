@@ -49,7 +49,7 @@ import (
 	"time"
 	"strconv"
 
-	"github.com/creasty/defaults"
+//	"github.com/creasty/defaults"
 	"github.com/stianeikeland/go-rpio/v4"
 )
 
@@ -65,8 +65,8 @@ type Irpio interface {
 }
 
 type RpioStates struct {
-	isOpen bool 		`default:"false"`
-	pinStates [32]bool 	`default:"[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]"`
+	IsOpen bool 		// `default:"false"`
+	PinStates []bool 	// `default:"[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]"`
 }
 
 
@@ -77,27 +77,27 @@ type RealRPIO struct {
 
 func (r RealRPIO) Open() (err error) {
 	fmt.Println("Open")
-	r.States.isOpen = true
+	r.States.IsOpen = true
 	return rpio.Open()
 }
 func (r RealRPIO) Close() {
 	fmt.Println("Close")
-	r.States.isOpen = false
+	r.States.IsOpen = false
 	rpio.Close()
 }
 func (r RealRPIO) Output(p rpio.Pin) {
 	fmt.Println("Output" + string(p))
-	r.States.pinStates[p] = true
+	r.States.PinStates[p] = true
 	p.Output()
 }
 func (r RealRPIO) Input(p rpio.Pin) {
 	fmt.Println("Input" + string(p))
-	r.States.pinStates[p] = false
+	r.States.PinStates[p] = false
 	p.Input()
 }
 func (r RealRPIO) Toggle(p rpio.Pin) {
 	fmt.Println("Toggle" + string(p))
-	r.States.pinStates[p] = !r.States.pinStates[p]
+	r.States.PinStates[p] = !r.States.PinStates[p]
 	p.Toggle()
 }
 
@@ -109,36 +109,33 @@ type MockRPIO struct {
 
 func (m MockRPIO) Open() (err error) {
 	fmt.Println("Open")
-	m.States.isOpen = true
-	m.States.pinStates = [32]bool{false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false}
+	m.States.IsOpen = true
 	return nil
 }
 func (m MockRPIO) Close() {
-	m.States.isOpen = false
+	m.States.IsOpen = false
 	fmt.Println("Close")
 }
 func (m MockRPIO) Output(p rpio.Pin) {
-	m.States.pinStates[p] = true
-	fmt.Println("Output" + string(p))
+	m.States.PinStates[p] = true
+	printPin("Output", p, m.States.PinStates[p])
 }
 func (m MockRPIO) Input(p rpio.Pin) {
-	m.States.pinStates[p] = false
-	fmt.Println("Input" + string(p))
+	m.States.PinStates[p] = false
+	printPin("Input", p, m.States.PinStates[p])
 }
 func (m MockRPIO) Toggle(p rpio.Pin) {
-	pos := uint64(p)
-	var state bool 
-	var statenow = m.States.pinStates[pos]
-	fmt.Println("Fuck:" + strconv.FormatBool(statenow))
-	if(statenow == true){
-		state = false 
-	} else {
-		state = true
-	}
-	fmt.Println("Fuck2:" + strconv.FormatBool(state))
-	*(&m.States.pinStates[pos]) = state
-	fmt.Println("Toggle(" + strconv.FormatUint(pos, 10) + "):" + strconv.FormatBool(m.States.pinStates[pos]))
+	var pin = &(m.States.PinStates[p])
+	if(*pin == true){*pin = false } else { *pin = true }
+	printPin("Toggle", p, *pin)
 }
+
+func printPin(action string, p rpio.Pin, state bool) {
+	fmt.Print(action + " : ")
+	fmt.Print("Pin:" + strconv.FormatUint(uint64(p), 10))
+	fmt.Println("  " + strconv.FormatBool(state))
+}
+
 
 var sim = true
 
@@ -148,13 +145,14 @@ func main() {
 
 	var r Irpio
 	if(sim){
-		r2 := &MockRPIO{}
-		if err := defaults.Set(r2); err != nil {
-			panic(err)
+		r = MockRPIO{
+			States : RpioStates {
+				IsOpen : false,
+				PinStates: []bool{false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false},
+			},
 		}
-		r = r2
 	} else {
-		r = &RealRPIO{}
+		r = RealRPIO{}
 	}
 	
 	err := r.Open()
@@ -167,10 +165,63 @@ func main() {
 	pin18 := rpio.Pin(18)
 	r.Output(pin18)
 
-	for x := 0; x < 20; x++ {
+	for x := 0; x < 4; x++ {
 		r.Toggle(pin18)
 		time.Sleep(time.Second / 5)
 	}
+
+
+
+	/*
+	//    ar1 := []bool{true,true,true}
+	var as = ha{}
+	as.as.ar1 = []bool{true,true,true}
+
+	fmt.Println("Fuck1:" + strconv.FormatBool(as.as.ar1[1]))
+	as.as.ar1[1] = false
+	fmt.Println("Fuck2:" + strconv.FormatBool(as.as.ar1[1]))
+	as.as.ar1[1] = true
+	fmt.Println("Fuck3:" + strconv.FormatBool(as.as.ar1[1]))
+	par11 := &as.as.ar1[1]
+	*par11 = false
+	fmt.Println("Fuck4:" + strconv.FormatBool(as.as.ar1[1]))
+	*par11 = true
+	fmt.Println("Fuck5:" + strconv.FormatBool(as.as.ar1[1]))
+
+	var a ai
+	a = as
+	a.t()
+
+	fmt.Println("Fuck9:" + strconv.FormatBool(as.as.ar1[1]))
+	fmt.Println("Fuck10:" + strconv.FormatBool(as.as.ar1[1]))
+
+	*/
 }
 
 
+type ai interface {
+	t()
+}
+
+type arstr struct {
+	ar1 []bool 
+}
+
+type ha struct {
+	as arstr
+}
+
+func (as ha) t() {
+
+	as.as.ar1[1] = false
+	fmt.Println("Fuck6:" + strconv.FormatBool(as.as.ar1[1]))
+	as.as.ar1[1] = true
+	fmt.Println("Fuck7:" + strconv.FormatBool(as.as.ar1[1]))
+	as.as.ar1[1] = false
+	fmt.Println("Fuck8:" + strconv.FormatBool(as.as.ar1[1]))
+	/*
+	par11 := &as.as.ar1[1]
+	*par11 = false
+	fmt.Println("Fuck8:" + strconv.FormatBool(as.as.ar1[1]))
+	*/
+}
