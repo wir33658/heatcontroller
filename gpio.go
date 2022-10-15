@@ -325,7 +325,7 @@ func main() {
 	var done = false
 	for !done {
 		token_obj := getToken(client)
-
+		fmt.Println("Token :", token_obj)
 
 		Wait(time.Second * 5)
 	}

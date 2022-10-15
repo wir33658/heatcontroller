@@ -414,9 +414,28 @@ func getMe(client http.Client, token_obj token) me {
 	return me_obj
 }
 
+type Credentials struct {
+	Name string `json:"Name"`
+	PW  string `json:"PW"`
+}
+
+func readCredentials() Credentials {
+	js, err := ioutil.ReadFile("/Volumes/MacSSD1/Dev/my_secrets.txt")  
+    if err != nil {
+        fmt.Println("Err")
+    }
+	var cred Credentials
+	json.Unmarshal(js, &cred)
+	return cred
+}
+
 func getToken(client http.Client) token {
 
-	req, getErr2 := http.NewRequest("POST", "https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=hans.dampf@web.de&password=dummerfisch&client_secret=wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc", nil)
+	//var js = []byte("{\"Name\":\"Dinesh Krishnan\",\"PW\":\"apassword\"}")
+	var cred Credentials = readCredentials()
+
+	url := "https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=" + cred.Name + "&password=" + cred.PW + "&client_secret=wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc"
+	req, getErr2 := http.NewRequest("POST", url, nil)
 	if getErr2 != nil {
 		log.Fatal(getErr2)
 	}
