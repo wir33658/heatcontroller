@@ -416,7 +416,7 @@ func getMe(client http.Client, token_obj token) me {
 
 func getToken(client http.Client) token {
 
-	req, getErr2 := http.NewRequest("POST", "https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=robert.weissmann@web.de&password=127SushiRob721&client_secret=wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc", nil)
+	req, getErr2 := http.NewRequest("POST", "https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=hans.dampf@web.de&password=dummerfisch&client_secret=wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc", nil)
 	if getErr2 != nil {
 		log.Fatal(getErr2)
 	}

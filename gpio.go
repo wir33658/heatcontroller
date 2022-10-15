@@ -48,6 +48,7 @@ import (
 	"fmt"
 	"time"
 	"strconv"
+	"net/http"
 //	"math"
 
 //	"github.com/creasty/defaults"
@@ -66,7 +67,8 @@ type Irpio interface {
 	Low(p rpio.Pin)
 	High(p rpio.Pin)
 
-	GpioSetup(s7 bool, s0 bool, s2 bool, s3 bool)
+	Setup()
+	EngineSet(s7 bool, s0 bool, s2 bool, s3 bool)
 }
 
 type RpioStatus struct {
@@ -156,7 +158,7 @@ func toDegree(deg float64) float64 {
 	return FULL_CIRCLE / 360 * deg
 }
 
-func (r RealRPIO) GpioSetup(s7 bool, s0 bool, s2 bool, s3 bool){
+func (r RealRPIO) EngineSet(s7 bool, s0 bool, s2 bool, s3 bool){
 	pin0 := rpio.Pin(0)
 	pin2 := rpio.Pin(2)
 	pin3 := rpio.Pin(3)
@@ -173,18 +175,18 @@ func (r RealRPIO) GpioSetup(s7 bool, s0 bool, s2 bool, s3 bool){
 func (r RealRPIO) RightTurn(deg float64){
 	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
 	var degree = toDegree(deg)
-	r.GpioSetup(false, false, false, false)
+	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
 		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
-		r.GpioSetup(true, false, false, false)
-		r.GpioSetup(true, true, false, false)
-		r.GpioSetup(false, true, false, false)
-		r.GpioSetup(false, true, true, false)
-		r.GpioSetup(false, false, true, false)
-		r.GpioSetup(false, false, true, true)
-		r.GpioSetup(false, false, false, true)
-		r.GpioSetup(true, false, false, true)
+		r.EngineSet(true, false, false, false)
+		r.EngineSet(true, true, false, false)
+		r.EngineSet(false, true, false, false)
+		r.EngineSet(false, true, true, false)
+		r.EngineSet(false, false, true, false)
+		r.EngineSet(false, false, true, true)
+		r.EngineSet(false, false, false, true)
+		r.EngineSet(true, false, false, true)
 		degree -= 1
 	}
 }
@@ -192,18 +194,18 @@ func (r RealRPIO) RightTurn(deg float64){
 func (r RealRPIO) LeftTurn(deg float64){
 	fmt.Println("Left-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
 	var degree = toDegree(deg)
-	r.GpioSetup(false, false, false, false)
+	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
 		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
-		r.GpioSetup(true, false, false, true)
-		r.GpioSetup(false, false, false, true)
-		r.GpioSetup(false, false, true, true)
-		r.GpioSetup(false, false, true, false)
-		r.GpioSetup(false, true, true, false)
-		r.GpioSetup(false, true, false, false)
-		r.GpioSetup(true, true, false, false)
-		r.GpioSetup(true, false, false, false)
+		r.EngineSet(true, false, false, true)
+		r.EngineSet(false, false, false, true)
+		r.EngineSet(false, false, true, true)
+		r.EngineSet(false, false, true, false)
+		r.EngineSet(false, true, true, false)
+		r.EngineSet(false, true, false, false)
+		r.EngineSet(true, true, false, false)
+		r.EngineSet(true, false, false, false)
 		degree -= 1
 	}
 }
@@ -217,7 +219,7 @@ func (r RealRPIO) Calibrate() {
 	r.RightTurn(r.Home.TRIGGER_STEP)
 	time.Sleep(time.Second * 2)
 	r.RightTurn(20 * r.Home.HALF_DEGREE_STEP) // should be 20 now
-	r.GpioSetup(false, false, false, false)
+	r.EngineSet(false, false, false, false)
 	r.Home.RECENT_TEMP = 20
 	time.Sleep(time.Second * 2)
 	fmt.Println("Calibration done.")
@@ -260,11 +262,30 @@ func (r RealRPIO) Calibrate() {
 		time.Sleep(time.Second * 2)
 		r.Home.RECENT_TEMP = goal
 	}
-	r.GpioSetup(false, false, false, false)
+	r.EngineSet(false, false, false, false)
 
 	fmt.Println("Adjusted")
 	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
 	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'e', 3, 64)
+}
+
+func (r RealRPIO) Setup() {
+	fmt.Println("Setup")
+	pin0 := rpio.Pin(0)
+	pin2 := rpio.Pin(2)
+	pin3 := rpio.Pin(3)
+	pin7 := rpio.Pin(7)
+
+	r.Output(pin0)
+	r.Output(pin2)
+	r.Output(pin3)
+	r.Output(pin7)
+
+	r.EngineSet(false, false, false, false)
+}
+
+func Wait(d time.Duration){
+	time.Sleep(d)
 }
 
 var sim = true
@@ -296,21 +317,18 @@ func main() {
 		panic(fmt.Sprint("unable to open gpio", err.Error()))
 	}
 
+	client := http.Client{}
+
 	defer r.Close()
-	
-	pin0 := rpio.Pin(0)
-	pin2 := rpio.Pin(2)
-	pin3 := rpio.Pin(3)
-	pin7 := rpio.Pin(7)
+	r.Setup()	
 
-	r.Output(pin0)
-	r.Output(pin2)
-	r.Output(pin3)
-	r.Output(pin7)
-
-	r.GpioSetup(false, false, false, false)
+	var done = false
+	for !done {
+		token_obj := getToken(client)
 
 
+		Wait(time.Second * 5)
+	}
 
 
 
