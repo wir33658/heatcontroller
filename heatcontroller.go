@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"errors"
+//	"errors"
 )
 
 type token struct {
@@ -120,9 +120,9 @@ func main() {
 	client := http.Client{}
 
 	fmt.Println("-----------------------------------------------------------------------------------")
-	token_obj, err := getToken(client, 5)
+	token_obj, err := retrier(getTokenI, client, 15, 5)
 	if(err != nil){
-		log.Fatal(err)
+		log.Println(err)
 		panic(err)
 	}
 	printToken(token_obj)
@@ -310,7 +310,7 @@ func putZoneOverlay(client http.Client, token_obj token, zone_id int, home_id in
 
 	req, getErr2 := http.NewRequest("PUT", url, reader)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token_obj.AccessToken)
@@ -318,7 +318,7 @@ func putZoneOverlay(client http.Client, token_obj token, zone_id int, home_id in
 	//	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}, "Content-Type": {"application/json"}}
 	_, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	//fmt.Println("PUT resp:\n", resp)
 }
@@ -332,25 +332,25 @@ func getZoneOverlay(client http.Client, token_obj token, zone_id int, home_id in
 
 	req, getErr2 := http.NewRequest("GET", url, nil)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 	}
 
 	req.Header = http.Header{"Authorization": {"Bearer " + token_obj.AccessToken}}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		log.Fatal(readErr)
+		log.Println(readErr)
 	}
 
 	zone_state_overlay_obj := zone_state_overlay{}
 	jsonErr := json.Unmarshal(body, &zone_state_overlay_obj)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		log.Println(jsonErr)
 	}
 
 	return zone_state_overlay_obj
@@ -368,7 +368,7 @@ func getZoneState(client http.Client, token_obj token, zone_id int, home_id int)
 
 	req, getErr2 := http.NewRequest("GET", url, nil)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 	}
 
 	req.Header = http.Header{
@@ -377,12 +377,12 @@ func getZoneState(client http.Client, token_obj token, zone_id int, home_id int)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		log.Fatal(readErr)
+		log.Println(readErr)
 	}
 	// bodyStr := string(body)
 	// fmt.Println(bodyStr)
@@ -390,7 +390,7 @@ func getZoneState(client http.Client, token_obj token, zone_id int, home_id int)
 	zone_state_obj := zone_state{}
 	jsonErr := json.Unmarshal(body, &zone_state_obj)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		log.Println(jsonErr)
 	}
 
 	return zone_state_obj
@@ -414,7 +414,7 @@ func getZones(client http.Client, token_obj token, home_id int) []zone {
 
 	req, getErr2 := http.NewRequest("GET", url, nil)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 	}
 
 	req.Header = http.Header{
@@ -423,12 +423,12 @@ func getZones(client http.Client, token_obj token, home_id int) []zone {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		log.Fatal(readErr)
+		log.Println(readErr)
 	}
 	// bodyStr := string(body)
 	// fmt.Println(bodyStr)
@@ -436,7 +436,7 @@ func getZones(client http.Client, token_obj token, home_id int) []zone {
 	zone_objs := []zone{}
 	jsonErr := json.Unmarshal(body, &zone_objs)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		log.Println(jsonErr)
 	}
 
 	return zone_objs
@@ -446,7 +446,7 @@ func getMe(client http.Client, token_obj token) me {
 
 	req, getErr2 := http.NewRequest("GET", "https://my.tado.com/api/v2/me", nil)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 	}
 
 	req.Header = http.Header{
@@ -456,13 +456,13 @@ func getMe(client http.Client, token_obj token) me {
 	//	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	// fmt.Println(resp.Body)
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		log.Fatal(readErr)
+		log.Println(readErr)
 	}
 	// bodyStr := string(body)
 	// fmt.Println(bodyStr)
@@ -470,7 +470,7 @@ func getMe(client http.Client, token_obj token) me {
 	me_obj := me{}
 	jsonErr := json.Unmarshal(body, &me_obj)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		log.Println(jsonErr)
 	}
 
 	return me_obj
@@ -491,17 +491,20 @@ func readCredentials() Credentials {
 	return cred
 }
 
-func getToken(client http.Client, retry int) (token, error) {
+func retrier[G any](fn func(http.Client)(G,error), client http.Client, retry int, start int) (G, error) {
+	var token G
 	for i:=0; i<retry; i++ {               
-		token, err := getTokenI(client)
+		token, err := fn(client)
 		if err == nil {
 			return token, nil
 		}
-		log.Fatal(err)
-        fmt.Println("Error: retrying, waiting 3 seconds ...")    
-		time.Sleep(time.Second * 3)   
+		log.Println(err)
+		waiting_time := time.Second * time.Duration(start * i)
+        fmt.Println("Error: retrying, waiting ", waiting_time, " seconds ...")    
+		time.Sleep(waiting_time)   
     }  
-	return token{}, errors.New("Tried many time, but something is not working, check the logs!")
+	log.Fatal("Tried many times, but something is not working, check the logs!")
+	return token, nil
 }
 
 func getTokenI(client http.Client) (token,error) {
@@ -512,20 +515,20 @@ func getTokenI(client http.Client) (token,error) {
 	url := "https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=" + cred.Name + "&password=" + cred.PW + "&client_secret=wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc"
 	req, getErr2 := http.NewRequest("POST", url, nil)
 	if getErr2 != nil {
-		log.Fatal(getErr2)
+		log.Println(getErr2)
 		return token{}, getErr2
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return token{}, err
 	}
 	// fmt.Println(resp.Body)
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		log.Fatal(readErr)
+		log.Println(readErr)
 		return token{}, readErr
 	}
 	// fmt.Println(string(body))
@@ -533,7 +536,7 @@ func getTokenI(client http.Client) (token,error) {
 	token_obj := token{}
 	jsonErr := json.Unmarshal(body, &token_obj)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		log.Println(jsonErr)
 		return token{}, jsonErr
 	}
 

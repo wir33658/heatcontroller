@@ -324,7 +324,7 @@ func main2() {
 
 	var done = false
 	for !done {
-		token_obj, _ := getToken(client, 5)
+		token_obj, _ := getToken(client, 15, 5)
 //		fmt.Println("Token :", token_obj)
 		me_obj := getMe(client, token_obj)
 		printMe(me_obj)
