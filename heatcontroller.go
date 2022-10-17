@@ -2,6 +2,7 @@
 package main
 
 import (
+	"time"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"errors"
 )
 
 type token struct {
@@ -111,14 +113,18 @@ type zone_state struct {
 }
 
 // Main function
-func Amain2() {
+func main() {
 
 	fmt.Println("!... Hello Heatcontroller ...!")
 
 	client := http.Client{}
 
 	fmt.Println("-----------------------------------------------------------------------------------")
-	token_obj := GetToken(client)
+	token_obj, err := getToken(client, 5)
+	if(err != nil){
+		log.Fatal(err)
+		panic(err)
+	}
 	printToken(token_obj)
 	/*
 		fmt.Println("\n\nAccessToken:", token_obj.AccessToken)
@@ -171,15 +177,71 @@ func Amain2() {
 	setting := zone_state_setting{}
 	setting.Power = "ON"
 	setting.Type = "HEATING"
-	setting.Temperature.Celsius = 19.0
+	setting.Temperature.Celsius = 20.0
 	putZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id, setting)
 
 	fmt.Println("-----------------------------------------------------------------------------------")
 	kueche_zone_overlay2 := getZoneOverlay(client, token_obj, kueche_zone.Id, my_home.Id)
 	printOverlay(kueche_zone.Name, kueche_zone_overlay2)
 
+
+	my_home_obj := getMyHome(client, token_obj)
+
+	fmt.Println("My Home :")
+	printMyHome(&my_home_obj)
 	fmt.Println("Done")
 
+}
+
+type my_home_zone struct {
+	Id int
+	Name string
+//	typ string
+	ZoneState zone_state
+}
+
+type my_home struct {
+	Id int
+	Name string
+	PickTimeSecs int64
+	Zones map[string]my_home_zone
+}
+
+func getMyHome(client http.Client, token_obj token) my_home {
+	fmt.Println("-----------------------------------------------------------------------------------")
+	fmt.Println("Get my home:")
+
+	me_obj := getMe(client, token_obj)
+//	printMe(me_obj)
+//	home := me_obj.Homes[0]
+
+	my_home := my_home{
+		Id : me_obj.Homes[0].Id,
+		Name : me_obj.Homes[0].Name,
+		PickTimeSecs : time.Now().Unix(),
+		Zones : make(map[string]my_home_zone),
+	}
+
+	zones_obj := getZones(client, token_obj, my_home.Id)
+	// fmt.Println("\n\nZones:", zones_obj)
+
+	for _, e := range zones_obj {
+		zone_obj := getZone(e.Name, zones_obj)
+		zone_state_obj := getZoneState(client, token_obj, zone_obj.Id, my_home.Id)
+		my_home_zone_obj := my_home_zone{
+			Id : zone_obj.Id,
+			Name : zone_obj.Name,
+			ZoneState : zone_state_obj,
+		}
+		my_home.Zones[e.Name] = my_home_zone_obj
+	}
+
+	return my_home
+}
+
+func printMyHome(mh *my_home) {
+	js, _ := json.MarshalIndent(mh, "", "   ")
+	fmt.Println(string(js))
 }
 
 func printZone(zs *zone) {
@@ -429,7 +491,20 @@ func readCredentials() Credentials {
 	return cred
 }
 
-func GetToken(client http.Client) token {
+func getToken(client http.Client, retry int) (token, error) {
+	for i:=0; i<retry; i++ {               
+		token, err := getTokenI(client)
+		if err == nil {
+			return token, nil
+		}
+		log.Fatal(err)
+        fmt.Println("Error: retrying, waiting 3 seconds ...")    
+		time.Sleep(time.Second * 3)   
+    }  
+	return token{}, errors.New("Tried many time, but something is not working, check the logs!")
+}
+
+func getTokenI(client http.Client) (token,error) {
 
 	//var js = []byte("{\"Name\":\"Dinesh Krishnan\",\"PW\":\"apassword\"}")
 	var cred Credentials = readCredentials()
@@ -438,17 +513,20 @@ func GetToken(client http.Client) token {
 	req, getErr2 := http.NewRequest("POST", url, nil)
 	if getErr2 != nil {
 		log.Fatal(getErr2)
+		return token{}, getErr2
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
+		return token{}, err
 	}
 	// fmt.Println(resp.Body)
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
 		log.Fatal(readErr)
+		return token{}, readErr
 	}
 	// fmt.Println(string(body))
 
@@ -456,7 +534,8 @@ func GetToken(client http.Client) token {
 	jsonErr := json.Unmarshal(body, &token_obj)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
+		return token{}, jsonErr
 	}
 
-	return token_obj
+	return token_obj,nil
 }

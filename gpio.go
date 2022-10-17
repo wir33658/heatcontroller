@@ -290,7 +290,7 @@ func Wait(d time.Duration){
 
 var sim = true
 
-func main() {
+func main2() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
@@ -324,7 +324,7 @@ func main() {
 
 	var done = false
 	for !done {
-		token_obj := GetToken(client)
+		token_obj, _ := getToken(client, 5)
 //		fmt.Println("Token :", token_obj)
 		me_obj := getMe(client, token_obj)
 		printMe(me_obj)
