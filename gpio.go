@@ -333,8 +333,8 @@ func main() {
 	}
 
 	client := http.Client{}
-
 	defer r.Close()
+	
 	r.Setup()	
 	r.Calibrate()
 
