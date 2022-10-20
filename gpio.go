@@ -50,7 +50,7 @@ import (
 	"strconv"
 	"net/http"
 //	"math"
-
+	"log"
 //	"github.com/creasty/defaults"
 	"github.com/stianeikeland/go-rpio/v4"
 )
@@ -69,6 +69,8 @@ type Irpio interface {
 
 	Setup()
 	EngineSet(s7 bool, s0 bool, s2 bool, s3 bool)
+	Calibrate()
+	TempDiff(tempdiff float64)
 }
 
 type RpioStatus struct {
@@ -135,21 +137,23 @@ func (r RealRPIO) Low(p rpio.Pin) {
 	r.printPin("Low", p)
 }
 
-
+var printPinT = false
 func (r RealRPIO) printPin(action string, p rpio.Pin) {
-	var pinState rpio.State
-	if(!r.Sim){
-		pinState = p.Read()		
-	} else {
-		pinState = r.Status.PinStates[p]
-	}
-	r.Status.PinStates[p] = pinState 
-	pinMode := r.Status.PinModes[p]
+	if(printPinT){
+		var pinState rpio.State
+		if(!r.Sim){
+			pinState = p.Read()		
+		} else {
+			pinState = r.Status.PinStates[p]
+		}
+		r.Status.PinStates[p] = pinState 
+		pinMode := r.Status.PinModes[p]
 
-	fmt.Print(action + " : ")
-	fmt.Print("Pin:" + strconv.FormatUint(uint64(p), 10))
-	fmt.Print("  State=" + strconv.FormatUint(uint64(pinState), 10))
-	fmt.Println("  Mode=" + strconv.FormatUint(uint64(pinMode), 10))
+		fmt.Print(action + " : ")
+		fmt.Print("Pin:" + strconv.FormatUint(uint64(p), 10))
+		fmt.Print("  State=" + strconv.FormatUint(uint64(pinState), 10))
+		fmt.Println("  Mode=" + strconv.FormatUint(uint64(pinMode), 10))
+	}
 }
 
 var FULL_CIRCLE float64 = 510.0
@@ -169,16 +173,19 @@ func (r RealRPIO) EngineSet(s7 bool, s0 bool, s2 bool, s3 bool){
 	if(s3){r.High(pin3)} else {r.Low(pin3)}
 	if(s7){r.High(pin7)} else {r.Low(pin7)}
 
-	fmt.Println("-----------------------------")
+	if(printPinT){
+		fmt.Println("-----------------------------")
+	}
 }
 
 func (r RealRPIO) RightTurn(deg float64){
-	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
+//	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
 	var degree = toDegree(deg)
 	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
-		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+//		fmt.Print("d")
+//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
 		r.EngineSet(true, false, false, false)
 		r.EngineSet(true, true, false, false)
 		r.EngineSet(false, true, false, false)
@@ -189,6 +196,7 @@ func (r RealRPIO) RightTurn(deg float64){
 		r.EngineSet(true, false, false, true)
 		degree -= 1
 	}
+//	fmt.Println()
 }
 
 func (r RealRPIO) LeftTurn(deg float64){
@@ -197,7 +205,8 @@ func (r RealRPIO) LeftTurn(deg float64){
 	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
-		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+//		fmt.Print("d")
+//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
 		r.EngineSet(true, false, false, true)
 		r.EngineSet(false, false, false, true)
 		r.EngineSet(false, false, true, true)
@@ -208,6 +217,7 @@ func (r RealRPIO) LeftTurn(deg float64){
 		r.EngineSet(true, false, false, false)
 		degree -= 1
 	}
+//	fmt.Println()
 }
 
 func (r RealRPIO) Calibrate() {
@@ -227,7 +237,7 @@ func (r RealRPIO) Calibrate() {
 	r.Home.LAST_CMD = "Calibrate"
 	}
 
-	func (r RealRPIO) TempDiff(tempdiff float64) {
+func (r RealRPIO) TempDiff(tempdiff float64) {
 	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'e', 3, 64))
 	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
 
@@ -288,9 +298,14 @@ func Wait(d time.Duration){
 	time.Sleep(d)
 }
 
+func NextCalibration() int64 { // in Secs
+	var nc = time.Now().Unix() + (60 * 2)  // = 2 minutes
+	return nc
+}
+
 var sim = true
 
-func main2() {
+func main() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
@@ -321,15 +336,58 @@ func main2() {
 
 	defer r.Close()
 	r.Setup()	
+	r.Calibrate()
 
+	var nextCalib = NextCalibration() 
 	var done = false
 	for !done {
+		fmt.Print(".")
+		/*
 		token_obj, _ := getToken(client, 15, 5)
 //		fmt.Println("Token :", token_obj)
 		me_obj := getMe(client, token_obj)
 		printMe(me_obj)
+		*/
+
+		token_obj, err := retrier(getTokenI, client, 15, 5)
+		if(err != nil){
+			log.Println(err)
+			panic(err)
+		}
+	//	printToken(token_obj)
+
+		my_home_obj := getMyHome(client, token_obj)
+		
+		var highestTempDiff = -100.0
+		for key, zone := range my_home_obj.Zones {
+			fmt.Printf("Zone: %s ->\t\t\t", key)
+			var recentTemp = zone.ZoneState.SensorDataPoints.InsideTemperature.Celsius
+			var goalOverlayTemp = zone.ZoneState.Overlay.Setting.Temperature.Celsius
+			var goalSettingTemp = zone.ZoneState.Setting.Temperature.Celsius
+			var goalTemp = goalSettingTemp
+			if(goalOverlayTemp > 0.0){goalTemp = goalOverlayTemp}
+			var tempDiff = float64(goalTemp - recentTemp)
+			fmt.Printf("Temps : recent=%f;  ogoal=%f;  sgoal=%f;  diff=%f\n", recentTemp, goalOverlayTemp, goalSettingTemp, tempDiff)
+			if(tempDiff > highestTempDiff){
+				highestTempDiff = tempDiff
+			}
+		}
+		fmt.Printf("Hightest Temp Diff = %f\n\n", highestTempDiff)
+		r.TempDiff(highestTempDiff)
+
+		/*
+		if(highestTempDiff > 0){ // Rise heat
+		} else { // Lower heat
+		}
+		*/
 
 		Wait(time.Second * 10)
+		var now = time.Now().Unix()
+		if(now >= nextCalib){
+			fmt.Println("Time to calibrate")
+			nextCalib = NextCalibration()
+			r.Calibrate()
+		}
 	}
 
 
