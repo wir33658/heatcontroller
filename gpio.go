@@ -67,10 +67,7 @@ type Irpio interface {
 	Low(p rpio.Pin)
 	High(p rpio.Pin)
 
-	Setup()
 	EngineSet(s7 bool, s0 bool, s2 bool, s3 bool)
-	Calibrate()
-	TempDiff(tempdiff float64)
 }
 
 type RpioStatus struct {
@@ -179,13 +176,13 @@ func (r RealRPIO) EngineSet(s7 bool, s0 bool, s2 bool, s3 bool){
 }
 
 func (r RealRPIO) RightTurn(deg float64){
-//	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
+	fmt.Println("Right-Turn : " + strconv.FormatFloat(deg, 'f', 3, 64))
 	var degree = toDegree(deg)
 	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
 //		fmt.Print("d")
-//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'f', 3, 64))
 		r.EngineSet(true, false, false, false)
 		r.EngineSet(true, true, false, false)
 		r.EngineSet(false, true, false, false)
@@ -200,13 +197,13 @@ func (r RealRPIO) RightTurn(deg float64){
 }
 
 func (r RealRPIO) LeftTurn(deg float64){
-	fmt.Println("Left-Turn : " + strconv.FormatFloat(deg, 'e', 3, 64))
+	fmt.Println("Left-Turn : " + strconv.FormatFloat(deg, 'f', 3, 64))
 	var degree = toDegree(deg)
 	r.EngineSet(false, false, false, false)
 
 	for (degree > 0.0) {
 //		fmt.Print("d")
-//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'e', 3, 64))
+//		fmt.Println("degree : " + strconv.FormatFloat(degree, 'f', 3, 64))
 		r.EngineSet(true, false, false, true)
 		r.EngineSet(false, false, false, true)
 		r.EngineSet(false, false, true, true)
@@ -220,7 +217,13 @@ func (r RealRPIO) LeftTurn(deg float64){
 //	fmt.Println()
 }
 
-func (r RealRPIO) Calibrate() {
+type Controller interface {
+	Setup(r *RealRPIO)
+	Calibrate(r *RealRPIO)
+	TempDiff(r *RealRPIO, tempdiff float64)	
+}
+
+func Calibrate(r *RealRPIO) {
 	fmt.Println("Calibration started ...")
 	r.LeftTurn(r.Home.TRIGGER_STEP)
 	time.Sleep(time.Second * 2)
@@ -233,31 +236,31 @@ func (r RealRPIO) Calibrate() {
 	r.Home.RECENT_TEMP = 20
 	time.Sleep(time.Second * 2)
 	fmt.Println("Calibration done.")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 2, 64))
 	r.Home.LAST_CMD = "Calibrate"
 	}
 
-func (r RealRPIO) TempDiff(tempdiff float64) {
-	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'e', 3, 64))
-	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
+func TempDiff(r *RealRPIO, tempdiff float64) {
+	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
+	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 3, 64))
 
 	var goal = r.Home.RECENT_TEMP + tempdiff
-	fmt.Println("goal : " + strconv.FormatFloat(goal, 'e', 3, 64))
+	fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
 	if(goal < r.Home.MIN_TEMP){
 		goal = r.Home.MIN_TEMP
 	} else {
 		if(goal > r.Home.MAX_TEMP){
 			goal = r.Home.MAX_TEMP
 		} else {
-			fmt.Println("goal : " + strconv.FormatFloat(goal, 'e', 3, 64))
+			fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
 		}
 	}
 
 	var finaltempdiff = goal - r.Home.RECENT_TEMP
 	var finaltempdiffabs = finaltempdiff
 	if(finaltempdiff < 0){finaltempdiffabs = finaltempdiff * -1}
-	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'e', 3, 64))
-	fmt.Println("abs : "   + strconv.FormatFloat(finaltempdiffabs, 'e', 3, 64))
+	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'f', 3, 64))
+	fmt.Println("abs : "   + strconv.FormatFloat(finaltempdiffabs, 'f', 3, 64))
 
 	if(finaltempdiff < 0) {
 		r.RightTurn(r.Home.TRIGGER_STEP)
@@ -275,11 +278,11 @@ func (r RealRPIO) TempDiff(tempdiff float64) {
 	r.EngineSet(false, false, false, false)
 
 	fmt.Println("Adjusted")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'e', 3, 64))
-	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'e', 3, 64)
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 3, 64))
+	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'f', 3, 64)
 }
 
-func (r RealRPIO) Setup() {
+func Setup(r *RealRPIO) {
 	fmt.Println("Setup")
 	pin0 := rpio.Pin(0)
 	pin2 := rpio.Pin(2)
@@ -303,6 +306,24 @@ func NextCalibration() int64 { // in Secs
 	return nc
 }
 
+func calcHighestTempDifference(my_home_obj my_home) float64 {
+	var highestTempDiff = -100.0
+	for key, zone := range my_home_obj.Zones {
+		fmt.Printf("Zone: %s ->\t\t\t", key)
+		var recentTemp = zone.ZoneState.SensorDataPoints.InsideTemperature.Celsius
+		var goalOverlayTemp = zone.ZoneState.Overlay.Setting.Temperature.Celsius
+		var goalSettingTemp = zone.ZoneState.Setting.Temperature.Celsius
+		var goalTemp = goalSettingTemp
+		if(goalOverlayTemp > 0.0){goalTemp = goalOverlayTemp}
+		var tempDiff = float64(goalTemp - recentTemp)
+		fmt.Printf("Temps : recent=%f;  ogoal=%f;  sgoal=%f;  diff=%f\n", recentTemp, goalOverlayTemp, goalSettingTemp, tempDiff)
+		if(tempDiff > highestTempDiff){
+			highestTempDiff = tempDiff
+		}
+	}	
+	return highestTempDiff
+}
+
 var sim = true
 
 func main() {
@@ -311,7 +332,7 @@ func main() {
 
 	var L = rpio.Low
 	var I = rpio.Input
-	var r Irpio = RealRPIO{
+	var r = RealRPIO{
 		Sim : sim,
 		Status : RpioStatus {
 			IsOpen : false,
@@ -335,152 +356,34 @@ func main() {
 	client := http.Client{}
 	defer r.Close()
 	
-	r.Setup()	
-	r.Calibrate()
+	Setup(&r)	
+	Calibrate(&r)
 
 	var nextCalib = NextCalibration() 
 	var done = false
 	for !done {
 		fmt.Print(".")
-		/*
-		token_obj, _ := getToken(client, 15, 5)
-//		fmt.Println("Token :", token_obj)
-		me_obj := getMe(client, token_obj)
-		printMe(me_obj)
-		*/
 
 		token_obj, err := retrier(getTokenI, client, 15, 5)
 		if(err != nil){
 			log.Println(err)
 			panic(err)
 		}
-	//	printToken(token_obj)
 
 		my_home_obj := getMyHome(client, token_obj)
-		
-		var highestTempDiff = -100.0
-		for key, zone := range my_home_obj.Zones {
-			fmt.Printf("Zone: %s ->\t\t\t", key)
-			var recentTemp = zone.ZoneState.SensorDataPoints.InsideTemperature.Celsius
-			var goalOverlayTemp = zone.ZoneState.Overlay.Setting.Temperature.Celsius
-			var goalSettingTemp = zone.ZoneState.Setting.Temperature.Celsius
-			var goalTemp = goalSettingTemp
-			if(goalOverlayTemp > 0.0){goalTemp = goalOverlayTemp}
-			var tempDiff = float64(goalTemp - recentTemp)
-			fmt.Printf("Temps : recent=%f;  ogoal=%f;  sgoal=%f;  diff=%f\n", recentTemp, goalOverlayTemp, goalSettingTemp, tempDiff)
-			if(tempDiff > highestTempDiff){
-				highestTempDiff = tempDiff
-			}
-		}
+
+		var highestTempDiff = calcHighestTempDifference(my_home_obj)
+
 		fmt.Printf("Hightest Temp Diff = %f\n\n", highestTempDiff)
-		r.TempDiff(highestTempDiff)
+		TempDiff(&r, highestTempDiff)
 
-		/*
-		if(highestTempDiff > 0){ // Rise heat
-		} else { // Lower heat
-		}
-		*/
-
-		Wait(time.Second * 10)
+		Wait(time.Second * 30)
+		
 		var now = time.Now().Unix()
 		if(now >= nextCalib){
 			fmt.Println("Time to calibrate")
 			nextCalib = NextCalibration()
-			r.Calibrate()
+			Calibrate(&r)
 		}
 	}
-
-
-
-	/*
-	for x := 0; x < 4; x++ {
-		r.Toggle(pin18)
-		time.Sleep(time.Second / 5)
-	}
-	*/
-
-
-
-	/*
-	//    ar1 := []bool{true,true,true}
-	var as = ha{}
-	as.as.ar1 = []bool{true,true,true}
-
-	fmt.Println("Fuck1:" + strconv.FormatBool(as.as.ar1[1]))
-	as.as.ar1[1] = false
-	fmt.Println("Fuck2:" + strconv.FormatBool(as.as.ar1[1]))
-	as.as.ar1[1] = true
-	fmt.Println("Fuck3:" + strconv.FormatBool(as.as.ar1[1]))
-	par11 := &as.as.ar1[1]
-	*par11 = false
-	fmt.Println("Fuck4:" + strconv.FormatBool(as.as.ar1[1]))
-	*par11 = true
-	fmt.Println("Fuck5:" + strconv.FormatBool(as.as.ar1[1]))
-
-	var a ai
-	a = as
-	a.t()
-
-	fmt.Println("Fuck9:" + strconv.FormatBool(as.as.ar1[1]))
-	fmt.Println("Fuck10:" + strconv.FormatBool(as.as.ar1[1]))
-
-	*/
-}
-
-
-/*
-type MockRPIO struct {
-	Status RpioStatus	
-}
-
-func (m MockRPIO) Open() (err error) {
-	fmt.Println("Open")
-	m.Status.IsOpen = true
-	return nil
-}
-func (m MockRPIO) Close() {
-	m.Status.IsOpen = false
-	fmt.Println("Close")
-}
-func (m MockRPIO) Output(p rpio.Pin) {
-	m.Status.PinStates[p] = true
-	printPin("Output", p, m.Status.PinStates[p])
-}
-func (m MockRPIO) Input(p rpio.Pin) {
-	m.Status.PinStates[p] = false
-	printPin("Input", p, m.Status.PinStates[p])
-}
-func (m MockRPIO) Toggle(p rpio.Pin) {
-	var pin = &(m.Status.PinStates[p])
-	if(*pin == true){*pin = false } else { *pin = true }
-	printPin("Toggle", p, *pin)
-}
-*/
-
-
-type ai interface {
-	t()
-}
-
-type arstr struct {
-	ar1 []bool 
-}
-
-type ha struct {
-	as arstr
-}
-
-func (as ha) t() {
-
-	as.as.ar1[1] = false
-	fmt.Println("Fuck6:" + strconv.FormatBool(as.as.ar1[1]))
-	as.as.ar1[1] = true
-	fmt.Println("Fuck7:" + strconv.FormatBool(as.as.ar1[1]))
-	as.as.ar1[1] = false
-	fmt.Println("Fuck8:" + strconv.FormatBool(as.as.ar1[1]))
-	/*
-	par11 := &as.as.ar1[1]
-	*par11 = false
-	fmt.Println("Fuck8:" + strconv.FormatBool(as.as.ar1[1]))
-	*/
 }
