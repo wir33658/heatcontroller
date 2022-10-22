@@ -81,7 +81,8 @@ type HomeStatus struct {
 	HALF_DEGREE_STEP float64
 	MIN_TEMP float64
 	MAX_TEMP float64
-	RECENT_TEMP float64
+	RECENT_SET_TEMP float64
+	MEAS_DELAY_SECS int64
 	LAST_CMD string
 }
 
@@ -233,18 +234,18 @@ func Calibrate(r *RealRPIO) {
 	time.Sleep(time.Second * 2)
 	r.RightTurn(20 * r.Home.HALF_DEGREE_STEP) // should be 20 now
 	r.EngineSet(false, false, false, false)
-	r.Home.RECENT_TEMP = 20
+	r.Home.RECENT_SET_TEMP = 20
 	time.Sleep(time.Second * 2)
 	fmt.Println("Calibration done.")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 2, 64))
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 2, 64))
 	r.Home.LAST_CMD = "Calibrate"
 	}
 
 func TempDiff(r *RealRPIO, tempdiff float64) {
 	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
-	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 3, 64))
+	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 3, 64))
 
-	var goal = r.Home.RECENT_TEMP + tempdiff
+	var goal = r.Home.RECENT_SET_TEMP + tempdiff
 	fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
 	if(goal < r.Home.MIN_TEMP){
 		goal = r.Home.MIN_TEMP
@@ -256,7 +257,7 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 		}
 	}
 
-	var finaltempdiff = goal - r.Home.RECENT_TEMP
+	var finaltempdiff = goal - r.Home.RECENT_SET_TEMP
 	var finaltempdiffabs = finaltempdiff
 	if(finaltempdiff < 0){finaltempdiffabs = finaltempdiff * -1}
 	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'f', 3, 64))
@@ -267,18 +268,18 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 		time.Sleep(time.Second * 2)
 		r.RightTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
 		time.Sleep(time.Second * 2)
-		r.Home.RECENT_TEMP = goal
+		r.Home.RECENT_SET_TEMP = goal
 	} else if(finaltempdiff > 0) {
 		r.LeftTurn(r.Home.TRIGGER_STEP)
 		time.Sleep(time.Second * 2)
 		r.LeftTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
 		time.Sleep(time.Second * 2)
-		r.Home.RECENT_TEMP = goal
+		r.Home.RECENT_SET_TEMP = goal
 	}
 	r.EngineSet(false, false, false, false)
 
 	fmt.Println("Adjusted")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_TEMP, 'f', 3, 64))
+	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 3, 64))
 	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'f', 3, 64)
 }
 
@@ -344,7 +345,8 @@ func main() {
 			HALF_DEGREE_STEP : 44.0,
 			MIN_TEMP : 18.0,
 			MAX_TEMP : 23.0,
-			RECENT_TEMP : 20.0,
+			MEAS_DELAY_SECS : 5,
+			RECENT_SET_TEMP : 20.0,
 		},
 	}
 	
@@ -377,7 +379,7 @@ func main() {
 		fmt.Printf("Hightest Temp Diff = %f\n\n", highestTempDiff)
 		TempDiff(&r, highestTempDiff)
 
-		Wait(time.Second * 30)
+		Wait(time.Second * time.Duration(r.Home.MEAS_DELAY_SECS))
 		
 		var now = time.Now().Unix()
 		if(now >= nextCalib){
