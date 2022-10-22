@@ -212,7 +212,7 @@ func getMyHome(client http.Client, token_obj token) my_home {
 	fmt.Println("Get my home:")
 
 	me_obj := getMe(client, token_obj)
-//	printMe(me_obj)
+	printMe(me_obj)
 //	home := me_obj.Homes[0]
 
 	my_home := my_home{
@@ -262,7 +262,7 @@ func printMe(m me) {
 
 func printToken(m token) {
 	js, _ := json.MarshalIndent(m, "", "   ")
-	fmt.Println(string(js))
+	fmt.Println("Token : " + string(js))
 }
 
 func printOverlay(name string, m zone_state_overlay) {
@@ -482,7 +482,7 @@ type Credentials struct {
 }
 
 func readCredentials() Credentials {
-	js, err := ioutil.ReadFile("/Volumes/MacSSD1/Dev/my_secrets.txt")  
+	js, err := ioutil.ReadFile("credentials/my_secrets.txt")  
     if err != nil {
         fmt.Println("Err")
     }
@@ -539,6 +539,7 @@ func getTokenI(client http.Client) (token,error) {
 		log.Println(jsonErr)
 		return token{}, jsonErr
 	}
+	// fmt.Println("Token : " + string(token_obj))
 
 	return token_obj,nil
 }

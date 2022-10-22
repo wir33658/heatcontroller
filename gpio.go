@@ -96,6 +96,8 @@ func (r RealRPIO) Open() (err error) {
 	fmt.Println("Open")
 	if(!r.Sim){
 		err = rpio.Open()
+	} else {
+		fmt.Println("-- Simulation --")
 	}
 	if err == nil {
 		r.Status.IsOpen = true
@@ -325,7 +327,7 @@ func calcHighestTempDifference(my_home_obj my_home) float64 {
 	return highestTempDiff
 }
 
-var sim = true
+// var sim = false
 
 func main() {
 
@@ -334,7 +336,7 @@ func main() {
 	var L = rpio.Low
 	var I = rpio.Input
 	var r = RealRPIO{
-		Sim : sim,
+		Sim : false,
 		Status : RpioStatus {
 			IsOpen : false,
 			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
