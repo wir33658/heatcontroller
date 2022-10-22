@@ -128,12 +128,20 @@ func (r RealRPIO) Toggle(p rpio.Pin) {
 }
 
 func (r RealRPIO) High(p rpio.Pin) {
-	if(!r.Sim){p.High()} else {r.Status.PinStates[p] = rpio.High}
+	if(!r.Sim){
+		p.High()
+		var state = rpio.ReadPin(p)
+		fmt.Printf("High : Read-State=%d",state)
+	} else {r.Status.PinStates[p] = rpio.High}
 	r.printPin("High", p)
 }
 
 func (r RealRPIO) Low(p rpio.Pin) {
-	if(!r.Sim){p.Low()} else {r.Status.PinStates[p] = rpio.Low}
+	if(!r.Sim){
+		p.Low()
+		var state = rpio.ReadPin(p)
+		fmt.Printf("Low : Read-State=%d",state)
+	} else {r.Status.PinStates[p] = rpio.Low}
 	r.printPin("Low", p)
 }
 
