@@ -15,7 +15,7 @@ func move() {
     copy(arr2[0:], arrOUT)
     //GPIO.output(chan_list, arrOUT)
     set(arrOUT)
-    time.Sleep(time.Second * 1)
+    time.Sleep(time.Millisecond * 1)
 }
 
 func set(arr []int) {
@@ -55,7 +55,7 @@ func set(arr []int) {
     }
 }
 
-func main99() {
+func main() {
 	fmt.Println("GPIO Test")
 
         err := rpio.Open()

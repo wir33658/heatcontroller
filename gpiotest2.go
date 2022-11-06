@@ -8,7 +8,7 @@ import (
 var arr3 = [4]int{1,1,0,0}
 var arr4 = [4]int{0,1,0,0}
 
-func main() {
+func main99() {
     fmt.Println("GPIO Test2")
     for true {
         move2()
