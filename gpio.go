@@ -49,7 +49,7 @@ import (
 	"time"
 	"strconv"
 	"net/http"
-//	"math"
+	"math"
 	"log"
 //	"github.com/creasty/defaults"
 	"github.com/stianeikeland/go-rpio/v4"
@@ -248,7 +248,7 @@ func Calibrate(r *RealRPIO) {
 	fmt.Println("Calibration started ...")
 	r.LeftTurn(r.Home.TRIGGER_STEP)
 	time.Sleep(time.Second * 2)
-	r.LeftTurn(40.0 * r.Home.HALF_DEGREE_STEP) // should be max(= 30) now
+	r.LeftTurn(60.0 * r.Home.HALF_DEGREE_STEP) // should be max(= 30) now
 	time.Sleep(time.Second * 10) // Back to 20 degrees
 	r.RightTurn(r.Home.TRIGGER_STEP)
 	time.Sleep(time.Second * 2)
@@ -277,7 +277,7 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 		}
 	}
 
-	var finaltempdiff = goal - r.Home.RECENT_SET_TEMP
+	var finaltempdiff = roundFloat(goal - r.Home.RECENT_SET_TEMP, 0)
 	var finaltempdiffabs = finaltempdiff
 	if(finaltempdiff < 0){finaltempdiffabs = finaltempdiff * -1}
 	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'f', 3, 64))
@@ -328,6 +328,11 @@ func NextCalibration() int64 { // in Secs
 	return nc
 }
 
+func roundFloat(val float64, precision uint) float64 {
+    ratio := math.Pow(10, float64(precision))
+    return math.Round(val*ratio) / ratio
+}
+
 func calcHighestTempDifference(my_home_obj my_home) float64 {
 	var highestTempDiff = -100.0
 	for key, zone := range my_home_obj.Zones {
@@ -365,7 +370,7 @@ func main(){
 			HALF_DEGREE_STEP : 44.0,
 			MIN_TEMP : 18.0,
 			MAX_TEMP : 23.0,
-			MEAS_DELAY_SECS : 60,
+			MEAS_DELAY_SECS : 60 * 7,
 			RECENT_SET_TEMP : 20.0,
 		},
 	}
