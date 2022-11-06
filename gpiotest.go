@@ -33,13 +33,29 @@ func set(arr []int) {
     pin4 := rpio.Pin(4)
     pin4.Output()
 
-    if(arr[0] == 0)pin17.Low() else pin17.High()
-    if(arr[1] == 0)pin27.Low() else pin27.High()
-    if(arr[2] == 0)pin22.Low() else pin22.High()
-    if(arr[3] == 0)pin4.Low() else pin4.High()
+    if(arr[0] == 0){
+        pin17.Low()
+    } else {
+        pin17.High()
+    }
+    if(arr[1] == 0){
+        pin27.Low()
+    } else {
+        pin27.High()
+    }
+    if(arr[2] == 0){
+        pin22.Low()
+    } else {
+        pin22.High()
+    }
+    if(arr[3] == 0){
+        pin4.Low()
+    } else {
+        pin4.High()
+    }
 }
 
-func main() {
+func main99() {
 	fmt.Println("GPIO Test")
 
         err := rpio.Open()
