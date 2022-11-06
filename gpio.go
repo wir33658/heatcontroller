@@ -255,7 +255,7 @@ func Calibrate(r *RealRPIO) {
 	r.RightTurn(20 * r.Home.HALF_DEGREE_STEP) // should be 20 now
 	r.EngineSet(false, false, false, false)
 	r.Home.RECENT_SET_TEMP = 20
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 4)
 	fmt.Println("Calibration done.")
 	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 2, 64))
 	r.Home.LAST_CMD = "Calibrate"
@@ -324,7 +324,7 @@ func Wait(d time.Duration){
 }
 
 func NextCalibration() int64 { // in Secs
-	var nc = time.Now().Unix() + (60 * 2)  // = 2 minutes
+	var nc = time.Now().Unix() + (60 * 60)  // = 60 minutes
 	return nc
 }
 
@@ -365,7 +365,7 @@ func main(){
 			HALF_DEGREE_STEP : 44.0,
 			MIN_TEMP : 18.0,
 			MAX_TEMP : 23.0,
-			MEAS_DELAY_SECS : 5,
+			MEAS_DELAY_SECS : 60,
 			RECENT_SET_TEMP : 20.0,
 		},
 	}
