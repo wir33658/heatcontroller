@@ -130,8 +130,8 @@ func (r RealRPIO) Toggle(p rpio.Pin) {
 func (r RealRPIO) High(p rpio.Pin) {
 	if(!r.Sim){
 		p.High()
-		var state = rpio.ReadPin(p)
-		fmt.Printf("High : Read-State=%d",state)
+//		var state = rpio.ReadPin(p)
+//		fmt.Printf("High : Read-State=%d\n",state)
 	} else {r.Status.PinStates[p] = rpio.High}
 	r.printPin("High", p)
 }
@@ -139,8 +139,8 @@ func (r RealRPIO) High(p rpio.Pin) {
 func (r RealRPIO) Low(p rpio.Pin) {
 	if(!r.Sim){
 		p.Low()
-		var state = rpio.ReadPin(p)
-		fmt.Printf("Low : Read-State=%d",state)
+//		var state = rpio.ReadPin(p)
+//		fmt.Printf("Low : Read-State=%d\n",state)
 	} else {r.Status.PinStates[p] = rpio.Low}
 	r.printPin("Low", p)
 }
@@ -171,10 +171,17 @@ func toDegree(deg float64) float64 {
 }
 
 func (r RealRPIO) EngineSet(s7 bool, s0 bool, s2 bool, s3 bool){
-	pin0 := rpio.Pin(0)
-	pin2 := rpio.Pin(2)
-	pin3 := rpio.Pin(3)
-	pin7 := rpio.Pin(7)
+// 0 , 2, 3, 7
+	pin0 := rpio.Pin(4)
+	pin2 := rpio.Pin(17)
+	pin3 := rpio.Pin(27)
+	pin7 := rpio.Pin(22)
+
+
+	pin0.Output()
+	pin2.Output()
+	pin3.Output()
+	pin7.Output()
 
 	if(s0){r.High(pin0)} else {r.Low(pin0)}
 	if(s2){r.High(pin2)} else {r.Low(pin2)}
@@ -295,10 +302,10 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 
 func Setup(r *RealRPIO) {
 	fmt.Println("Setup")
-	pin0 := rpio.Pin(0)
-	pin2 := rpio.Pin(2)
-	pin3 := rpio.Pin(3)
-	pin7 := rpio.Pin(7)
+	pin0 := rpio.Pin(4)
+	pin2 := rpio.Pin(17)
+	pin3 := rpio.Pin(27)
+	pin7 := rpio.Pin(22)
 
 	r.Output(pin0)
 	r.Output(pin2)
