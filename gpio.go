@@ -337,7 +337,6 @@ func calcHighestTempDifference(my_home_obj my_home) float64 {
 
 // var sim = false
 
-func main98() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
