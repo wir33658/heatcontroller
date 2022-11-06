@@ -6,7 +6,40 @@ import (
         "github.com/stianeikeland/go-rpio/v4"
 )
 
-func main2() {
+var arr1 = [4]int{1,1,0,0}
+var arr2 = [4]int{0,1,0,0}
+
+func move() {
+    var arrOUT = append(arr1[1:], arr1[:1]...)               // [1:]+arr1[:1] # rotates array values of 1 digit
+    arr1 = arr2
+    copy(arr2[0:], arrOUT)
+    //GPIO.output(chan_list, arrOUT)
+    set(arrOUT)
+    time.Sleep(time.Second * 1)
+}
+
+func set(arr []int) {
+    fmt.Println("arr:", arr)
+
+    pin17 := rpio.Pin(17)
+    pin17.Output()
+
+    pin27 := rpio.Pin(27)
+    pin27.Output()
+
+    pin22 := rpio.Pin(22)
+    pin22.Output()
+
+    pin4 := rpio.Pin(4)
+    pin4.Output()
+
+    if(arr[0] == 0)pin17.Low() else pin17.High()
+    if(arr[1] == 0)pin27.Low() else pin27.High()
+    if(arr[2] == 0)pin22.Low() else pin22.High()
+    if(arr[3] == 0)pin4.Low() else pin4.High()
+}
+
+func main() {
 	fmt.Println("GPIO Test")
 
         err := rpio.Open()
@@ -16,6 +49,11 @@ func main2() {
 
         defer rpio.Close()
 
+        for true {
+            move()
+        }
+
+        /*
         pin4 := rpio.Pin(4)
         pin4.Output()
 
@@ -48,6 +86,7 @@ func main2() {
         time.Sleep(time.Second * 4)
         pin22.Low()
         time.Sleep(time.Second * 4)
+        */
  
 	/*
         time.Sleep(time.Second * 2)
@@ -59,3 +98,26 @@ func main2() {
 	*/
 }
 
+/*
+
+func set(arr []int) {
+
+    pin17 := rpio.Pin(17)
+    pin17.Output()
+
+    pin27 := rpio.Pin(27)
+    pin27.Output()
+
+    pin22 := rpio.Pin(22)
+    pin22.Output()
+
+    pin4 := rpio.Pin(4)
+    pin4.Output()
+
+    if(arr[0] == 0)pin17.Low() else pin17.High()
+    if(arr[1] == 0)pin27.Low() else pin27.High()
+    if(arr[2] == 0)pin22.Low() else pin22.High()
+    if(arr[3] == 0)pin4.Low() else pin4.High()
+
+}
+*/

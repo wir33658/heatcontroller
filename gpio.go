@@ -337,14 +337,14 @@ func calcHighestTempDifference(my_home_obj my_home) float64 {
 
 // var sim = false
 
-func main() {
+func main98() {
 
 	fmt.Println("!... Hello GPIO ...!")
 
 	var L = rpio.Low
 	var I = rpio.Input
 	var r = RealRPIO{
-		Sim : false,
+		Sim : true,
 		Status : RpioStatus {
 			IsOpen : false,
 			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
