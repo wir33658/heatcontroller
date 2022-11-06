@@ -22,16 +22,16 @@ func set(arr []int) {
     fmt.Println("arr:", arr)
 
     pin17 := rpio.Pin(17)
-    pin17.Output()
-
     pin27 := rpio.Pin(27)
-    pin27.Output()
-
     pin22 := rpio.Pin(22)
-    pin22.Output()
-
     pin4 := rpio.Pin(4)
+
+    /*
+    pin17.Output()
+    pin27.Output()
+    pin22.Output()
     pin4.Output()
+    */
 
     if(arr[0] == 0){
         pin17.Low()
@@ -64,6 +64,15 @@ func main() {
         }
 
         defer rpio.Close()
+
+        pin17 := rpio.Pin(17)
+        pin17.Output()
+        pin27 := rpio.Pin(27)
+        pin27.Output()
+        pin22 := rpio.Pin(22)
+        pin22.Output()
+        pin4 := rpio.Pin(4)
+        pin4.Output()
 
         for true {
             move()
