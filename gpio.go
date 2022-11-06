@@ -172,21 +172,24 @@ func toDegree(deg float64) float64 {
 
 func (r RealRPIO) EngineSet(s7 bool, s0 bool, s2 bool, s3 bool){
 // 0 , 2, 3, 7
-	pin0 := rpio.Pin(4)
-	pin2 := rpio.Pin(17)
-	pin3 := rpio.Pin(27)
-	pin7 := rpio.Pin(22)
 
+	pin1 := rpio.Pin(17)
+	pin2 := rpio.Pin(27)
+	pin3 := rpio.Pin(22)
+        pin4 := rpio.Pin(4)
 
+/*
 	pin0.Output()
 	pin2.Output()
 	pin3.Output()
 	pin7.Output()
-
-	if(s0){r.High(pin0)} else {r.Low(pin0)}
+*/
+	if(s0){r.High(pin1)} else {r.Low(pin1)}
 	if(s2){r.High(pin2)} else {r.Low(pin2)}
 	if(s3){r.High(pin3)} else {r.Low(pin3)}
-	if(s7){r.High(pin7)} else {r.Low(pin7)}
+	if(s7){r.High(pin4)} else {r.Low(pin4)}
+
+        time.Sleep(time.Millisecond * 1)
 
 	if(printPinT){
 		fmt.Println("-----------------------------")
@@ -302,15 +305,16 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 
 func Setup(r *RealRPIO) {
 	fmt.Println("Setup")
-	pin0 := rpio.Pin(4)
-	pin2 := rpio.Pin(17)
-	pin3 := rpio.Pin(27)
-	pin7 := rpio.Pin(22)
 
-	r.Output(pin0)
+	pin1 := rpio.Pin(17)
+	pin2 := rpio.Pin(27)
+	pin3 := rpio.Pin(22)
+        pin4 := rpio.Pin(4)
+
+	r.Output(pin1)
 	r.Output(pin2)
 	r.Output(pin3)
-	r.Output(pin7)
+	r.Output(pin4)
 
 	r.EngineSet(false, false, false, false)
 }
@@ -344,13 +348,13 @@ func calcHighestTempDifference(my_home_obj my_home) float64 {
 
 // var sim = false
 
-
+func main(){
 	fmt.Println("!... Hello GPIO ...!")
 
 	var L = rpio.Low
 	var I = rpio.Input
 	var r = RealRPIO{
-		Sim : true,
+		Sim : false,
 		Status : RpioStatus {
 			IsOpen : false,
 			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
