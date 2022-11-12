@@ -20,3 +20,26 @@ Using git with write access:
 10.) Copy the created token and : git remote set-url origin https://wir33658:<COPIED_TOKEN>@github.com/wir33658/heatcontroller.git
 11.) Now you have write access : git push  is now possible.
 
+
+Remarks on server.go:
+
+To work with TLS (https) a certificate needs to be created. Check also https://www.golinuxcloud.com/golang-http/
+
+Run:
+
+- openssl genrsa -out ca.key 4096
+- openssl req -new -x509 -days 365 -key ca.key -out cacert.pem -subj "/C=IN/ST=NSW/L=Oslo/O=GoLinuxCloud/OU=Org/CN=RootCA"
+
+-> Output : ca.key   and    cacert.pem
+
+- Create file : server_cert_ext.cnf (see https://www.golinuxcloud.com/golang-http/)
+- openssl genrsa -out server.key 4096
+- openssl req -new -key server.key -out server.csr -subj "/C=IN/ST=NSW/L=Oslo/O=GoLinuxCloud/OU=Org/CN=imac"
+- openssl x509 -req -in server.csr  -CA cacert.pem -CAkey ca.key -out server.crt -CAcreateserial -days 365 -sha256 -extfile server_cert_ext.cnf
+
+-> Output : server.crt  and   server.csr  and   server.key
+
+- cacert.pem and server.crt need to be bundled up since the parameter for the http.ListenAndServeTLS(...) function :
+  cp server.crt certbundle.pem
+  cat cacert.pem >> certbundle.pem
+  Check it : cat certbundle.pem
