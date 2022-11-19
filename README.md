@@ -1,5 +1,10 @@
 # heatcontroller
 
+Create executable : go build gpio.go heatcontroller.go
+Run it as a system service : sudo systemctl start gpio.service
+System service status : sudo systemctl status gpio.service
+Stop system service : sudo systemctl stop gpio.service
+
 
 
 Remarks on Git:

@@ -336,7 +336,11 @@ func roundFloat(val float64, precision uint) float64 {
 func calcHighestTempDifference(my_home_obj my_home) float64 {
 	var highestTempDiff = -100.0
 	for key, zone := range my_home_obj.Zones {
-		fmt.Printf("Zone: %s ->\t\t\t", key)
+                var istr = ""
+                if(key == "Toilette oben"){
+                  istr = " --- is ignored --- "
+                }
+		fmt.Printf("Zone: %s %s ->\t\t\t", key, istr)
 		var recentTemp = zone.ZoneState.SensorDataPoints.InsideTemperature.Celsius
 		var goalOverlayTemp = zone.ZoneState.Overlay.Setting.Temperature.Celsius
 		var goalSettingTemp = zone.ZoneState.Setting.Temperature.Celsius
@@ -344,22 +348,25 @@ func calcHighestTempDifference(my_home_obj my_home) float64 {
 		if(goalOverlayTemp > 0.0){goalTemp = goalOverlayTemp}
 		var tempDiff = float64(goalTemp - recentTemp)
 		fmt.Printf("Temps : recent=%f;  ogoal=%f;  sgoal=%f;  diff=%f\n", recentTemp, goalOverlayTemp, goalSettingTemp, tempDiff)
-		if(tempDiff > highestTempDiff){
-			highestTempDiff = tempDiff
-		}
+                if(key != "Toilette oben"){
+		  if(tempDiff > highestTempDiff){
+		  	highestTempDiff = tempDiff
+		  }
+                }
+         
 	}	
 	return highestTempDiff
 }
 
 // var sim = false
 
-func main44(){
+func main(){
 	fmt.Println("!... Hello GPIO ...!")
 
 	var L = rpio.Low
 	var I = rpio.Input
 	var r = RealRPIO{
-		Sim : true,
+		Sim : false,
 		Status : RpioStatus {
 			IsOpen : false,
 			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
