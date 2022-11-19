@@ -265,6 +265,14 @@ func TempDiff(r *RealRPIO, tempdiff float64) {
 	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
 	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 3, 64))
 
+        // In case the temp diff stays around 0 the recent temp will never drop and 
+        // might stay on a high heating level which causes unnecessary heating cost.
+        // Therefor it will be set to -1 to lower it anyway.
+        if(tempdiff < 0.49){
+          tempdiff = -1.0
+          fmt.Println("Tempdiff readjusted to: " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
+        }
+
 	var goal = r.Home.RECENT_SET_TEMP + tempdiff
 	fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
 	if(goal < r.Home.MIN_TEMP){
