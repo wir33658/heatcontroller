@@ -1,57 +1,13 @@
 package main
 
 // Using : https://github.com/stianeikeland/go-rpio
-/*
-err := rpio.Open()
-
-pin := rpio.Pin(10)
-
-pin.Output()       // Output mode
-pin.High()         // Set pin High
-pin.Low()          // Set pin Low
-pin.Toggle()       // Toggle pin (Low -> High -> Low)
-
-pin.Input()        // Input mode
-res := pin.Read()  // Read state from pin (High / Low)
-
-pin.Mode(rpio.Output)   // Alternative syntax
-pin.Write(rpio.High)
-
-
-pin.PullUp()
-pin.PullDown()
-pin.PullOff()
-
-pin.Pull(rpio.PullUp)
-
-rpio.Close()
-
-Example (LED blink on Pin 18):
-
-	err := rpio.Open()
-	if err != nil {
-		panic(fmt.Sprint("unable to open gpio", err.Error()))
-	}
-
-	defer rpio.Close()
-
-	pin := rpio.Pin(18)
-	pin.Output()
-
-	for x := 0; x < 20; x++ {
-		pin.Toggle()
-		time.Sleep(time.Second / 5)
-	}
-*/
 
 import (
 	"fmt"
 	"time"
 	"strconv"
-	"net/http"
-	"math"
-	"log"
-//	"github.com/creasty/defaults"
+    "encoding/json"
+    "strings"
 	"github.com/stianeikeland/go-rpio/v4"
 )
 
@@ -76,20 +32,15 @@ type RpioStatus struct {
 	PinModes []rpio.Mode 	
 }
 
-type HomeStatus struct {
-	TRIGGER_STEP float64
-	HALF_DEGREE_STEP float64
-	MIN_TEMP float64
-	MAX_TEMP float64
-	RECENT_SET_TEMP float64
-	MEAS_DELAY_SECS int64
-	LAST_CMD string
-}
-
 type RealRPIO struct {
 	Sim bool
 	Status RpioStatus
 	Home HomeStatus
+}
+
+func (h *HomeStatus) toString() (string) {
+    js, _ := json.MarshalIndent(m, "", "   ")
+    fmt.Println(string(js))
 }
 
 func (r RealRPIO) Open() (err error) {
@@ -236,196 +187,4 @@ func (r RealRPIO) LeftTurn(deg float64){
 		degree -= 1
 	}
 //	fmt.Println()
-}
-
-type Controller interface {
-	Setup(r *RealRPIO)
-	Calibrate(r *RealRPIO)
-	TempDiff(r *RealRPIO, tempdiff float64)	
-}
-
-func Calibrate(r *RealRPIO) {
-	fmt.Println("Calibration started ...")
-	r.LeftTurn(r.Home.TRIGGER_STEP)
-	time.Sleep(time.Second * 2)
-	r.LeftTurn(60.0 * r.Home.HALF_DEGREE_STEP) // should be max(= 30) now
-	time.Sleep(time.Second * 10) // Back to 20 degrees
-	r.RightTurn(r.Home.TRIGGER_STEP)
-	time.Sleep(time.Second * 2)
-	r.RightTurn(20 * r.Home.HALF_DEGREE_STEP) // should be 20 now
-	r.EngineSet(false, false, false, false)
-	r.Home.RECENT_SET_TEMP = 20
-	time.Sleep(time.Second * 4)
-	fmt.Println("Calibration done.")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 2, 64))
-	r.Home.LAST_CMD = "Calibrate"
-	}
-
-func TempDiff(r *RealRPIO, tempdiff float64) {
-	fmt.Println("Tempdiff : " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
-	fmt.Println("Recenttemp : " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 3, 64))
-
-        // In case the temp diff stays around 0 the recent temp will never drop and 
-        // might stay on a high heating level which causes unnecessary heating cost.
-        // Therefor it will be set to -1 to lower it anyway.
-        if(tempdiff < 0.49){
-          tempdiff = -1.0
-          fmt.Println("Tempdiff readjusted to: " + strconv.FormatFloat(tempdiff, 'f', 3, 64))
-        }
-
-	var goal = r.Home.RECENT_SET_TEMP + tempdiff
-	fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
-	if(goal < r.Home.MIN_TEMP){
-		goal = r.Home.MIN_TEMP
-	} else {
-		if(goal > r.Home.MAX_TEMP){
-			goal = r.Home.MAX_TEMP
-		} else {
-			fmt.Println("goal : " + strconv.FormatFloat(goal, 'f', 3, 64))
-		}
-	}
-
-	var finaltempdiff = roundFloat(goal - r.Home.RECENT_SET_TEMP, 0)
-	var finaltempdiffabs = finaltempdiff
-	if(finaltempdiff < 0){finaltempdiffabs = finaltempdiff * -1}
-	fmt.Println("finaltempdiff : "  + strconv.FormatFloat(finaltempdiff, 'f', 3, 64))
-	fmt.Println("abs : "   + strconv.FormatFloat(finaltempdiffabs, 'f', 3, 64))
-
-	if(finaltempdiff < 0) {
-		r.RightTurn(r.Home.TRIGGER_STEP)
-		time.Sleep(time.Second * 2)
-		r.RightTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
-		time.Sleep(time.Second * 2)
-		r.Home.RECENT_SET_TEMP = goal
-	} else if(finaltempdiff > 0) {
-		r.LeftTurn(r.Home.TRIGGER_STEP)
-		time.Sleep(time.Second * 2)
-		r.LeftTurn(finaltempdiffabs * 2 * r.Home.HALF_DEGREE_STEP)
-		time.Sleep(time.Second * 2)
-		r.Home.RECENT_SET_TEMP = goal
-	}
-	r.EngineSet(false, false, false, false)
-
-	fmt.Println("Adjusted")
-	fmt.Println("Set temp should be " + strconv.FormatFloat(r.Home.RECENT_SET_TEMP, 'f', 3, 64))
-	r.Home.LAST_CMD = "TempDiff: " + strconv.FormatFloat(tempdiff, 'f', 3, 64)
-}
-
-func Setup(r *RealRPIO) {
-	fmt.Println("Setup")
-
-	pin1 := rpio.Pin(17)
-	pin2 := rpio.Pin(27)
-	pin3 := rpio.Pin(22)
-        pin4 := rpio.Pin(4)
-
-	r.Output(pin1)
-	r.Output(pin2)
-	r.Output(pin3)
-	r.Output(pin4)
-
-	r.EngineSet(false, false, false, false)
-}
-
-func Wait(d time.Duration){
-	time.Sleep(d)
-}
-
-func NextCalibration() int64 { // in Secs
-	var nc = time.Now().Unix() + (60 * 60)  // = 60 minutes
-	return nc
-}
-
-func roundFloat(val float64, precision uint) float64 {
-    ratio := math.Pow(10, float64(precision))
-    return math.Round(val*ratio) / ratio
-}
-
-func calcHighestTempDifference(my_home_obj my_home) float64 {
-	var highestTempDiff = -100.0
-	for key, zone := range my_home_obj.Zones {
-                var istr = ""
-                if(key == "Toilette oben"){
-                  istr = " --- is ignored --- "
-                }
-		fmt.Printf("Zone: %s %s ->\t\t\t", key, istr)
-		var recentTemp = zone.ZoneState.SensorDataPoints.InsideTemperature.Celsius
-		var goalOverlayTemp = zone.ZoneState.Overlay.Setting.Temperature.Celsius
-		var goalSettingTemp = zone.ZoneState.Setting.Temperature.Celsius
-		var goalTemp = goalSettingTemp
-		if(goalOverlayTemp > 0.0){goalTemp = goalOverlayTemp}
-		var tempDiff = float64(goalTemp - recentTemp)
-		fmt.Printf("Temps : recent=%f;  ogoal=%f;  sgoal=%f;  diff=%f\n", recentTemp, goalOverlayTemp, goalSettingTemp, tempDiff)
-                if(key != "Toilette oben"){
-		  if(tempDiff > highestTempDiff){
-		  	highestTempDiff = tempDiff
-		  }
-                }
-         
-	}	
-	return highestTempDiff
-}
-
-// var sim = false
-
-func main(){
-	fmt.Println("!... Hello GPIO ...!")
-
-	var L = rpio.Low
-	var I = rpio.Input
-	var r = RealRPIO{
-		Sim : false,
-		Status : RpioStatus {
-			IsOpen : false,
-			PinStates: []rpio.State{L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,L},
-			PinModes: []rpio.Mode{I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I},
-		},
-		Home : HomeStatus {
-			TRIGGER_STEP : 100.0,
-			HALF_DEGREE_STEP : 44.0,
-			MIN_TEMP : 18.0,
-			MAX_TEMP : 23.0,
-			MEAS_DELAY_SECS : 60 * 7,
-			RECENT_SET_TEMP : 20.0,
-		},
-	}
-	
-	err := r.Open()
-	if err != nil {
-		panic(fmt.Sprint("unable to open gpio", err.Error()))
-	}
-
-	client := http.Client{}
-	defer r.Close()
-	
-	Setup(&r)	
-	Calibrate(&r)
-
-	var nextCalib = NextCalibration() 
-	var done = false
-	for !done {
-		fmt.Print(".")
-
-		token_obj, err := retrier(getTokenI, client, 15, 5)
-		if(err != nil){
-			log.Println(err)
-			panic(err)
-		}
-
-		my_home_obj := getMyHome(client, token_obj)
-
-		var highestTempDiff = calcHighestTempDifference(my_home_obj)
-
-		fmt.Printf("Hightest Temp Diff = %f\n\n", highestTempDiff)
-		TempDiff(&r, highestTempDiff)
-
-		Wait(time.Second * time.Duration(r.Home.MEAS_DELAY_SECS))
-		
-		var now = time.Now().Unix()
-		if(now >= nextCalib){
-			fmt.Println("Time to calibrate")
-			nextCalib = NextCalibration()
-			Calibrate(&r)
-		}
-	}
 }
